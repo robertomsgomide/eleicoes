@@ -18,7 +18,7 @@ Organização dentro de cada pasta: `<fonte ou uso>/<ano ou eleição>/...`, por
 
 ## Na nuvem: o ramo `dados`
 
-A rodada a cada 2 horas no GitHub Actions (`.github/workflows/site.yml`) não tem os gigabytes daqui. O que ela
+A rodada de cada hora no GitHub Actions (`.github/workflows/site.yml`) não tem os gigabytes daqui. O que ela
 precisa e não muda até o 2º turno fica no ramo `dados` do repositório, com um commit só, e é copiado por cima
 desta pasta antes da rodada:
 

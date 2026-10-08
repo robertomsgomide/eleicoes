@@ -100,7 +100,7 @@ uv run eleicoes pesquisas --atualizar  # pega a revisão atual da Wikipedia e o 
 uv run eleicoes atualizar              # só 2026: revisão nova? confere antes de guardar e refaz o site
 ```
 
-Até o 2º turno de 2026, `atualizar` roda sozinho a cada 2 horas, no GitHub Actions (`.github/workflows/site.yml`;
+Até o 2º turno de 2026, `atualizar` roda sozinho a cada hora, no GitHub Actions (`.github/workflows/site.yml`;
 os dados que ele usa estão descritos em [dados/README.md](../dados/README.md)). A revisão nova só é
 guardada depois de comparada com a anterior (`src/eleicoes/atualizacao.py`): mais de 2 pesquisas sumindo ou
 mudando de uma vez, um número já publicado mudando mais de 3 pontos ou uma pesquisa nova impossível (ou, no 2º

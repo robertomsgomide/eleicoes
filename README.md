@@ -37,7 +37,7 @@ uv run pytest                    # testes
 A eleição acompanhada pelo painel ao vivo é escolhida em `[ao_vivo]` no
 [config/eleicoes.toml](config/eleicoes.toml).
 
-Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada 2 horas, até as 17h de 25/10, o GitHub
+Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada hora, até as 17h de 25/10, o GitHub
 Actions ([.github/workflows/site.yml](.github/workflows/site.yml)) roda `uv run eleicoes atualizar`, faz o commit
 dos dados refeitos e publica o site de novo. Cada rodada:
 
@@ -68,7 +68,7 @@ npm run build      # site estático em site/dist, sem nenhuma dependência exter
 ## Organização
 
 ```
-.github/workflows/     publicação do site no GitHub Pages e atualização a cada 2 horas (GitHub Actions)
+.github/workflows/     publicação do site no GitHub Pages e atualização a cada hora (GitHub Actions)
 config/eleicoes.toml   anos, turnos, códigos do TSE, candidatos e cores de cada campo
 src/eleicoes/          o código (pacote Python)
   ao_vivo/             painel da apuração em tempo real

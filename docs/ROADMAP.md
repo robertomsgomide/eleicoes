@@ -23,10 +23,10 @@ localhost; depois, publicação para o público geral sem depender de um PC liga
 | 2 | Site + apuração no tempo ✅ (05/10; 2026 exato desde 07/10) | Abas Início, 2018, 2022, 2026, Comparações e Metodologia; resultado por região; apuração em % dos válidos, votos e vantagem, Brasil e regiões; eixo por horário e por % apurado; viradas anotadas | 2022 e 2026 exatos, 2018 estimado e validado (também com 2026) (`uv run eleicoes site`) |
 | 3 | Pesquisas ✅ (05/10) | Base de pesquisas dos três anos (Wikipedia em português, revisão guardada, conferida com o registro do TSE); tendência × resultado; erro por instituto; erro das médias em Comparações (`uv run eleicoes pesquisas`) | 100% ligadas ao registro em 2018 e no 1º turno de 2022; ~95% no 2º turno de 2022; ~88% em 2026 (a Futura não aparece no registro nacional de 2026). Lista em [qualidade_pesquisas.md](qualidade_pesquisas.md) |
 | 4 | Mapa de pontos ✅ (05/10; 2º turno de 2026 depois do dia 25) | Seção "Mapa" em cada ano: pontos (WebGL; 1 ponto = 500 votos no país até 1 voto na rua), hexágonos de vantagem, busca de município, nome e votos de cada local ao passar o mouse; gráfico do voto por local e comparação entre os anos. Coordenadas completadas com 2016–2026 e validadas (`docs/qualidade_dados.md`) | 2018 e 2022 nos dois turnos, 2026 no 1º |
-| 5 | Projeção do 2º turno 2026 ✅ (07/10; refeita sozinha a cada pesquisa nova até 25/10) | Total do país: ponto de partida (1º turno das urnas + divisão dos outros candidatos nas pesquisas que perguntaram os dois turnos) combinado com a tendência das pesquisas feitas depois do 1º turno, com incerteza e chance de vitória; distribuição seção a seção para regiões e UFs. Seção "Projeção do 2º turno" em 2026 e na Metodologia; tendência das pesquisas de 2º turno recomeça depois do 1º turno (`uv run eleicoes projecao`). Pesquisas e projeção atualizadas a cada 2 horas, com conferência antes de publicar (`uv run eleicoes atualizar`, no GitHub Actions) | Refeita dia a dia em 2018 e 2022: erro médio de 1,0 e 1,6 p.p., na véspera −0,05 e +0,8 p.p., urnas na faixa de 80% em todos os dias ([validacao_projecao.md](validacao_projecao.md)) |
+| 5 | Projeção do 2º turno 2026 ✅ (07/10; refeita sozinha a cada pesquisa nova até 25/10) | Total do país: ponto de partida (1º turno das urnas + divisão dos outros candidatos nas pesquisas que perguntaram os dois turnos) combinado com a tendência das pesquisas feitas depois do 1º turno, com incerteza e chance de vitória; distribuição seção a seção para regiões e UFs. Seção "Projeção do 2º turno" em 2026 e na Metodologia; tendência das pesquisas de 2º turno recomeça depois do 1º turno (`uv run eleicoes projecao`). Pesquisas e projeção atualizadas a cada hora, com conferência antes de publicar (`uv run eleicoes atualizar`, no GitHub Actions) | Refeita dia a dia em 2018 e 2022: erro médio de 1,0 e 1,6 p.p., na véspera −0,05 e +0,8 p.p., urnas na faixa de 80% em todos os dias ([validacao_projecao.md](validacao_projecao.md)) |
 | 6 | Forecast dinâmico da apuração | Painel ao vivo novo: grava cada atualização oficial (Brasil e UFs) e prevê a evolução da curva a partir do estado atual. Base: `modelos.projecao.distribuir` dá o resultado esperado de cada seção para qualquer total do país | Ensaio completo com a noite de 2022; no ar em 25/10 às 17h |
 | 7 | Depois de 25/10 | 2º turno de 2026 com os boletins do TSE; aba de comparações; Censo 2022 | — |
-| 8 | Publicação ✅ (08/10; a parte ao vivo fica com a Etapa 6) | Site no GitHub Pages ([robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)), publicado a cada envio para o `main`; `atualizar` a cada 2 horas no GitHub Actions, com os dados que ele usa no ramo `dados` (`.github/workflows/site.yml`) | Site no ar e a rodada automática conferida no GitHub |
+| 8 | Publicação ✅ (08/10; a parte ao vivo fica com a Etapa 6) | Site no GitHub Pages ([robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)), publicado a cada envio para o `main`; `atualizar` a cada hora no GitHub Actions, com os dados que ele usa no ramo `dados` (`.github/workflows/site.yml`) | Site no ar e a rodada automática conferida no GitHub |
 
 Sugestão de folga para 25/10: etapas 1–3 até ~15/10, mapa até ~19/10, projeção até ~21/10,
 ensaio do forecast até ~23/10. Se apertar, o mapa pode ir para depois do dia 25 sem prejuízo. (Em 08/10, as
@@ -45,7 +45,7 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
 - **Incerteza**: desvios redondos e conservadores, com a sensibilidade de cada um no relatório; normal, sem caudas
   mais pesadas. Em 07/10 ainda não há pesquisa de 2º turno feita depois do 1º turno na Wikipedia: a projeção é só o
   ponto de partida (Lula 48,2%, chance de 24%).
-- **Atualização automática** (07/10; no GitHub Actions desde 08/10): `uv run eleicoes atualizar` roda a cada 2 horas
+- **Atualização automática** (07/10; no GitHub Actions desde 08/10): `uv run eleicoes atualizar` roda a cada hora
   até as 17h de 25/10. Uma revisão nova da Wikipedia só é publicada depois de comparada com a guardada. Ela é
   segurada, e a rodada falha (o GitHub avisa por e-mail), se mais de 2 pesquisas somem ou mudam de uma vez, se um número já publicado muda mais
   de 3 pontos, ou se uma pesquisa nova tem datas ou percentuais impossíveis ou, no 2º turno, fica a mais de 8
@@ -55,7 +55,7 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
 
 ## Publicação: decisões (08/10/2026)
 
-- **GitHub Pages**, não Cloudflare Pages: a atualização a cada 2 horas precisa rodar no GitHub Actions de qualquer
+- **GitHub Pages**, não Cloudflare Pages: a atualização periódica precisa rodar no GitHub Actions de qualquer
   jeito, e assim código, atualização e site ficam numa conta só. O custo é o repositório público.
 - **Histórico**: o repositório público começa num commit só ("Início"), com o estado de 08/10; o histórico do
   desenvolvimento fica só no computador local, no ramo `historico-local`.

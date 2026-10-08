@@ -1,4 +1,4 @@
-# O site no GitHub Pages: publicado a cada envio para o main e, a cada 2 horas, até o início da apuração do 2º
+# O site no GitHub Pages: publicado a cada envio para o main e, a cada hora, até o início da apuração do 2º
 # turno, conferido contra a Wikipedia (uv run eleicoes atualizar). Com pesquisa nova, ou com a projeção de um dia
 # novo, o robô faz o commit dos dados refeitos e publica de novo. Uma revisão da página recusada pela conferência
 # faz a rodada falhar, e o GitHub avisa por e-mail; depois de conferir a página, "Run workflow" com "forcar"
@@ -14,7 +14,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 1-23/2 * * *"  # a cada 2 horas, aos 17 minutos (em UTC: em Brasília, 22h17, 0h17, 2h17...)
+    - cron: "17 * * * *"  # a cada hora, aos 17 minutos: o GitHub atrasa ou pula rodadas quando está cheio
   workflow_dispatch:
     inputs:
       forcar:
@@ -99,7 +99,7 @@ jobs:
 
   publicar:
     needs: atualizar
-    # no envio para o main e na rodada manual, sempre; na rodada a cada 2 horas, só quando os dados mudaram
+    # no envio para o main e na rodada manual, sempre; na rodada de cada hora, só quando os dados mudaram
     if: ${{ !cancelled() && (github.event_name == 'push' || needs.atualizar.outputs.mudou == 'true' || (github.event_name == 'workflow_dispatch' && needs.atualizar.result == 'success')) }}
     runs-on: ubuntu-24.04  # fixo até a eleição: o ubuntu-latest passa ao Ubuntu 26 a partir de 19/10
     timeout-minutes: 20

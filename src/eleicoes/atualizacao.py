@@ -10,7 +10,7 @@ Cada rodada:
 4. com pesquisas novas, guarda a revisão e refaz as pesquisas e a projeção do site. Sem nada novo, só anota a
    consulta: a projeção passa a valer "com o que se sabia" até hoje (o site muda uma vez por dia).
 
-Quem roda o comando a cada 2 horas, até o início da apuração do 2º turno, é o GitHub Actions
+Quem roda o comando a cada hora, até o início da apuração do 2º turno, é o GitHub Actions
 (.github/workflows/site.yml), que depois faz o commit dos dados refeitos e publica o site; uma revisão recusada
 faz a rodada falhar, e o GitHub avisa por e-mail. Sem a revisão guardada (um computador novo, ou a nuvem sem o
 estado da rodada anterior), o comando refaz a que está no site antes de conferir. `uv run eleicoes agendar` faz o
@@ -273,7 +273,7 @@ def _atualizar(ano, forcar, aviso):
     if ultima == guardada["revid"] or (ultima == estado.get("conferida") and not forcar):
         _log(f"Wikipedia: revisão {ultima}, a mesma da última conferência: nada novo.")
     elif ultima == estado.get("recusada") and not forcar:
-        # a rodada que recusou já falhou e avisou; esta só espera, sem falhar de novo (seria um e-mail a cada 2 horas)
+        # a rodada que recusou já falhou e avisou; esta só espera, sem falhar de novo (seria um e-mail a cada hora)
         _log(f"Wikipedia: revisão {ultima}, recusada antes ({'; '.join(estado.get('motivos') or [])}). O site continua "
              "como estava, à espera de uma revisão nova da página ou de  uv run eleicoes atualizar --forcar")
         recusada = True
