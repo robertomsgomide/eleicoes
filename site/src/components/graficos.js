@@ -27,12 +27,18 @@ export function legenda(itens) {
   )}</div>`;
 }
 
+// Sem valor (um resultado que ainda não saiu), o placar diz "Não divulgado".
 export function placar({nome, cor, valor, votos, detalhe, casas = 2}) {
   return html`<div class="placar">
     <div class="quem">${cor ? html`<span class="amostra" style="background:${cor}"></span>` : ""}${nome}</div>
-    <div class="grande">${pct(valor, casas)}</div>
+    <div class=${valor == null ? "grande pendente" : "grande"}>${valor == null ? "Não divulgado" : pct(valor, casas)}</div>
     <div class="detalhe">${votos != null ? `${num(votos)} votos` : ""}${detalhe ? (votos != null ? " · " : "") + detalhe : ""}</div>
   </div>`;
+}
+
+// No lugar de um gráfico ou do mapa, enquanto o turno não tem dados (o 2º turno de 2026 até a eleição).
+export function naoDivulgado(texto, {altura = 240} = {}) {
+  return html`<div class="nao-divulgado" style="min-height:${altura}px"><strong>Não divulgado</strong><span>${texto}</span></div>`;
 }
 
 // ---- Dados ----------------------------------------------------------------------------

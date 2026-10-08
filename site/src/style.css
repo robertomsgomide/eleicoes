@@ -80,6 +80,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Resultado que ainda não saiu: no placar e no lugar de um gráfico ou do mapa */
+.placar .grande.pendente {
+  font-size: 1.5rem;
+  line-height: 2.42rem; /* a mesma altura do número (2.2rem × 1.1): o cartão não muda de tamanho */
+  color: var(--theme-foreground-muted);
+}
+.nao-divulgado {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 16px;
+  border: 1px dashed var(--theme-foreground-faint);
+  border-radius: 8px;
+  text-align: center;
+  font: 14px/1.4 var(--sans-serif);
+  color: var(--theme-foreground-muted);
+}
+.nao-divulgado strong {
+  font-size: 1.15rem;
+  color: var(--theme-foreground-alt);
+}
+
 /* Legenda em HTML acima dos gráficos */
 .legenda {
   display: flex;
