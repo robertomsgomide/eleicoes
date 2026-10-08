@@ -1,6 +1,6 @@
 # Validação da projeção do 2º turno
 
-> Gerado por `uv run eleicoes projecao` em 07/10/2026 17:53. Não editar à mão.
+> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 08/10/2026 09:02. Não editar à mão.
 
 Método em `src/eleicoes/modelos/projecao.py` e na Metodologia do site. Cada ano é refeito dia a dia, só com o que se sabia em cada dia (o 1º turno das urnas e as pesquisas concluídas até ali).
 
@@ -10,7 +10,7 @@ Método em `src/eleicoes/modelos/projecao.py` e na Metodologia do site. Cada ano
 |---|---|--:|--:|--:|---|--:|--:|
 | 2018 | 27/10 | 25 | 45,27% | 44,82% | 42,9% a 46,7% | 0% | 44,87% |
 | 2022 | 29/10 | 50 | 53,24% | 51,73% | 49,9% a 53,6% | 89% | 50,90% |
-| 2026 | 07/10 | 0 | 48,20% | 48,20% | 45,0% a 51,4% | 24% | – |
+| 2026 | 08/10 | 0 | 48,20% | 48,20% | 45,0% a 51,4% | 24% | – |
 
 ## Erros em 2018 e 2022
 
