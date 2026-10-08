@@ -458,13 +458,17 @@ function dicaPrimeiroTurno(t, nomes) {
   ].join("\n");
 }
 
-// Frase para a nota do gráfico de 2º turno: o que é o losango vazado do 1º turno.
+// Frase para a nota do gráfico de 2º turno: o que são as pesquisas de antes do 1º turno e o losango vazado.
 export function notaPrimeiroTurno(t, nomes) {
   const dois = primeiroTurnoEntreOsDois(t);
   if (!dois) return "";
   const r = t.resultado_primeiro_turno;
-  return `O losango vazado é o 1º turno das urnas contado só entre os dois, a mesma base das pesquisas de 2º turno: ${nomes.petismo} ${pct(dois.petismo, 1)} × ${nomes.bolsonarismo} ${pct(dois.bolsonarismo, 1)} (com os outros candidatos, ${pct(r.petismo, 1)} e ${pct(r.bolsonarismo, 1)} dos válidos).`;
+  return `Antes do 1º turno, as pesquisas já testavam o confronto direto entre os dois; depois dele, medem a disputa de fato, e a linha de tendência recomeça. O losango vazado é o 1º turno das urnas contado só entre os dois, a mesma base das pesquisas de 2º turno: ${nomes.petismo} ${pct(dois.petismo, 1)} × ${nomes.bolsonarismo} ${pct(dois.bolsonarismo, 1)} (com os outros candidatos, ${pct(r.petismo, 1)} e ${pct(r.bolsonarismo, 1)} dos válidos).`;
 }
+
+// Frase para a nota das pesquisas, a mesma nas três eleições: como a linha de tendência é feita.
+export const NOTA_TENDENCIA =
+  "Tendência: em cada data, uma reta ajustada às pesquisas das semanas em volta, antes e depois dela, com mais peso para as mais próximas e as de amostra maior; no fim da linha, só entram as anteriores.";
 
 // Cada pesquisa (pontos), a tendência (linhas) e o resultado das urnas (losangos), em % dos votos válidos.
 // No 2º turno, a tendência recomeça depois do 1º turno (campo `segmento`), marcado por uma linha vertical e pelo
