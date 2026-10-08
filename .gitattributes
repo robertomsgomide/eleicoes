@@ -1,0 +1,5 @@
+# Quebras de linha LF em tudo (o padrão do Windows converteria para CRLF)
+* text=auto eol=lf
+*.png binary
+*.zip binary
+*.parquet binary

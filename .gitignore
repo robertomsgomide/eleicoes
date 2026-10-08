@@ -1,0 +1,26 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Dados: o que se regenera com os comandos do projeto fica fora do git.
+# Exceção: o que foi gravado ao vivo durante uma apuração não pode ser baixado de novo depois.
+/dados/*
+!/dados/README.md
+!/dados/bruto/
+/dados/bruto/*
+!/dados/bruto/ao_vivo/
+!/dados/bruto/manifesto.csv
+
+# Site (Observable Framework, a partir da Etapa 2)
+node_modules/
+site/dist/
+site/src/.observablehq/cache/
+
+# Permissões locais do Claude Code
+.claude/settings.local.json
+
+# Sistema
+Thumbs.db
+desktop.ini

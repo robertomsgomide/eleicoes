@@ -1,0 +1,52 @@
+# Parâmetros do estudo: Lulismo/Petismo × Bolsonarismo nas eleições presidenciais.
+# Só o cargo de Presidente (código 0001 no TSE). Datas e horas no horário de Brasília.
+#
+# Códigos do TSE: "pleito" e "eleicao" identificam cada turno nos arquivos do TSE.
+# Os que faltam são preenchidos na Etapa 1, lidos dos próprios arquivos do TSE;
+# o pleito do 2º turno de 2026 só aparece em resultados.tse.jus.br/oficial/comum/config/ele-c.json
+# perto da data.
+#
+# "nas_pesquisas": como o candidato aparece nas tabelas de pesquisas da Wikipedia (início do nome na coluna ou
+# o nome entre parênteses na célula). Em 2026, "Bolsonaro" sozinho é Jair, que não é candidato: o campo é "Flávio".
+#
+# "divulgacao": hora em que o TSE começou a divulgar os resultados. Em 2018 o país votou das 8h às 17h
+# no horário local e a divulgação esperou as urnas do Acre fecharem (19h de Brasília); desde 2022 o
+# horário de votação é o de Brasília para todos e a divulgação começa às 17h.
+
+[campos.petismo]
+nome = "Lulismo/Petismo"
+cor = "#d0343f"         # tema claro
+cor_escura = "#ef5a62"  # tema escuro
+
+[campos.bolsonarismo]
+nome = "Bolsonarismo"
+cor = "#2b67b8"
+cor_escura = "#5b95e6"
+
+[eleicoes.2018]
+turno1 = { data = "2018-10-07", divulgacao = "19:00", pleito = "228", eleicao = "295" }
+turno2 = { data = "2018-10-28", divulgacao = "19:00" }
+petismo = { numero = 13, nome = "Fernando Haddad", partido = "PT", nas_pesquisas = "Haddad" }
+bolsonarismo = { numero = 17, nome = "Jair Bolsonaro", partido = "PSL", nas_pesquisas = "Bolsonaro" }
+
+[eleicoes.2022]
+turno1 = { data = "2022-10-02", divulgacao = "17:00", pleito = "406", eleicao = "544" }
+turno2 = { data = "2022-10-30", divulgacao = "17:00" }
+petismo = { numero = 13, nome = "Lula", partido = "PT", nas_pesquisas = "Lula" }
+bolsonarismo = { numero = 22, nome = "Jair Bolsonaro", partido = "PL", nas_pesquisas = "Bolsonaro" }
+
+# "nulos_tecnicos": candidatos cujos votos o TSE anulou (candidatura indeferida) e conta como nulos, não válidos.
+# 2026, 1º turno: Leonardo Alves de Araújo (28), 5.246 votos ("vnt" no resultado final do site de resultados).
+[eleicoes.2026]
+turno1 = { data = "2026-10-04", divulgacao = "17:00", pleito = "3220", eleicao = "6257", nulos_tecnicos = [28] }
+turno2 = { data = "2026-10-25", divulgacao = "17:00", eleicao = "6258" }
+petismo = { numero = 13, nome = "Lula", partido = "PT", nas_pesquisas = "Lula" }
+bolsonarismo = { numero = 22, nome = "Flávio Bolsonaro", partido = "PL", nas_pesquisas = "Flávio" }
+
+# Eleição acompanhada pelo painel ao vivo (uv run eleicoes ao-vivo).
+# Para o 2º turno de 2026: turno = 2, depois de preencher o pleito acima.
+[ao_vivo]
+ano = 2026
+turno = 1
+cargo = "0001"
+porta = 8765

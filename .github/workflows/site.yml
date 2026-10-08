@@ -1,0 +1,135 @@
+# O site no GitHub Pages: publicado a cada envio para o main e, a cada 2 horas, até o início da apuração do 2º
+# turno, conferido contra a Wikipedia (uv run eleicoes atualizar). Com pesquisa nova, ou com a projeção de um dia
+# novo, o robô faz o commit dos dados refeitos e publica de novo. Uma revisão da página recusada pela conferência
+# faz a rodada falhar, e o GitHub avisa por e-mail; depois de conferir a página, "Run workflow" com "forcar"
+# publica mesmo assim.
+#
+# A atualização usa dados que não ficam no main: as seções e os totais oficiais de cada turno já apurado e as
+# pesquisas de 2018 e 2022 vêm do ramo `dados`; a revisão guardada da Wikipedia, o registro de pesquisas do TSE e as
+# pesquisas processadas de 2026 passam de uma rodada para a outra pelo cache do Actions. Se o cache sumir, o
+# comando refaz a revisão que está no site.
+name: Site
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 1-23/2 * * *"  # a cada 2 horas, aos 17 minutos (em UTC: em Brasília, 22h17, 0h17, 2h17...)
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Publicar a revisão atual da Wikipedia mesmo que a conferência ache problemas"
+        type: boolean
+        default: false
+
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+env:
+  TZ: America/Sao_Paulo  # datas da projeção e do registro no horário de Brasília
+
+jobs:
+  atualizar:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write  # o commit dos dados refeitos
+    outputs:
+      mudou: ${{ steps.commit.outputs.mudou }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Dados do ramo dados
+        uses: actions/checkout@v7
+        with:
+          ref: dados
+          path: ramo-dados
+      - run: cp -a ramo-dados/dados/. dados/ && rm -rf ramo-dados
+
+      - name: Estado da rodada anterior
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            dados/bruto/wikipedia/pesquisas_presidente_2026.*
+            dados/bruto/tse/pesquisas/2026
+            dados/processado/pesquisas/*_2026.parquet
+            dados/cache/atualizar.json
+          key: atualizar-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: atualizar-
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Pesquisas novas?
+        run: uv run --frozen --no-dev eleicoes atualizar ${{ inputs.forcar && '--forcar' || '' }}
+
+      - name: Resumo da rodada
+        if: always()
+        run: |
+          { echo '```'; cat dados/atualizar.log 2>/dev/null || echo "(sem registro)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guarda o estado para a próxima rodada
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            dados/bruto/wikipedia/pesquisas_presidente_2026.*
+            dados/bruto/tse/pesquisas/2026
+            dados/processado/pesquisas/*_2026.parquet
+            dados/cache/atualizar.json
+          key: atualizar-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Commit dos dados refeitos
+        id: commit
+        run: |
+          if git diff --quiet -- site/src/data; then
+            echo "mudou=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/src/data docs dados/bruto/manifesto.csv
+          git commit -m "Atualização automática: pesquisas e projeção (Wikipedia, revisão $(jq -r .revid dados/bruto/wikipedia/pesquisas_presidente_2026.json))"
+          git pull --rebase
+          git push
+          echo "mudou=true" >> "$GITHUB_OUTPUT"
+
+  publicar:
+    needs: atualizar
+    # no envio para o main e na rodada manual, sempre; na rodada a cada 2 horas, só quando os dados mudaram
+    if: ${{ !cancelled() && (github.event_name == 'push' || needs.atualizar.outputs.mudou == 'true' || (github.event_name == 'workflow_dispatch' && needs.atualizar.result == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacao.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main  # com o commit que o robô acabou de fazer
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Monta o site
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+      - id: publicacao
+        uses: actions/deploy-pages@v5

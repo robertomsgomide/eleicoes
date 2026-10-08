@@ -1,0 +1,407 @@
+/* Tema padrão do Framework (claro "air", escuro "near-midnight", conforme o sistema) + cores do estudo. */
+@import url("observablehq:default.css");
+@import url("observablehq:theme-air.css") (prefers-color-scheme: light);
+@import url("observablehq:theme-near-midnight.css") (prefers-color-scheme: dark);
+
+:root {
+  /* Fontes do sistema: nada é baixado de fora */
+  --serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Os dois campos (cores de identidade, validadas para daltonismo) */
+  --petismo: #d0343f;
+  --bolsonarismo: #2b67b8;
+  --outros: #b9b5ae;
+
+  /* Regiões: paleta categórica em ordem fixa */
+  --regiao-norte: #2a78d6;
+  --regiao-nordeste: #eb6834;
+  --regiao-centro-oeste: #1baf7a;
+  --regiao-sudeste: #eda100;
+  --regiao-sul: #e87ba4;
+  --regiao-exterior: #8e8a83;
+
+  /* Anos: rampa neutra do mais antigo (claro) ao mais recente (escuro) */
+  --ano-2018: #a8a49d;
+  --ano-2022: #6b6862;
+  --ano-2026: #1b1d21;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --petismo: #ef5a62;
+    --bolsonarismo: #5b95e6;
+    --outros: #5e5b56;
+    --regiao-norte: #3987e5;
+    --regiao-nordeste: #d95926;
+    --regiao-centro-oeste: #199e70;
+    --regiao-sudeste: #c98500;
+    --regiao-sul: #d55181;
+    --regiao-exterior: #77736c;
+    --ano-2018: #6f6c66;
+    --ano-2022: #a9a6a0;
+    --ano-2026: #ecebe7;
+  }
+}
+
+/* Abertura das páginas */
+.lead {
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--theme-foreground-alt);
+  max-width: 680px;
+}
+
+/* Placar: número grande + rótulo */
+.placar {
+  display: grid;
+  gap: 2px;
+}
+.placar .quem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 14px/1.3 var(--sans-serif);
+}
+.placar .amostra {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+.placar .grande {
+  font: 600 2.2rem/1.1 var(--sans-serif);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.placar .detalhe {
+  font-size: 13px;
+  color: var(--theme-foreground-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Legenda em HTML acima dos gráficos */
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font: 13px/1.4 var(--sans-serif);
+  color: var(--theme-foreground-alt);
+  margin: 0 0 6px;
+}
+.legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legenda i {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 2.5px solid currentColor;
+}
+.legenda i.tracejado {
+  border-top-style: dashed;
+}
+.legenda i.ponto {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+.legenda i.bloco {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 2px;
+  background: currentColor;
+}
+.legenda i.losango {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+.legenda i.losango.vazado {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  background: none;
+}
+
+/* Rótulo "exato" / "estimado" */
+.selo {
+  display: inline-block;
+  font: 600 11px/1 var(--sans-serif);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-foreground-faintest);
+  color: var(--theme-foreground-muted);
+  vertical-align: middle;
+}
+.selo.estimado {
+  border-style: dashed;
+}
+
+.nota {
+  font-size: 13px;
+  color: var(--theme-foreground-muted);
+  max-width: 720px;
+}
+
+/* Títulos padrão das caixas de destaque (o Framework os escreve em inglês, via CSS) */
+.note:not([label])::before {
+  content: "Observação";
+}
+.tip:not([label])::before {
+  content: "Dica";
+}
+.warning:not([label])::before {
+  content: "Atenção";
+}
+.caution:not([label])::before {
+  content: "Cuidado";
+}
+
+/* O Framework escreve a navegação do rodapé em inglês, via CSS */
+#observablehq-footer nav a[rel="prev"]::before {
+  content: "Página anterior";
+}
+#observablehq-footer nav a[rel="next"]::before {
+  content: "Próxima página";
+}
+
+/* Mapa dos votos (components/mapa.js) */
+.mapa {
+  position: relative;
+  height: 560px;
+  margin: 0 0 8px;
+  max-width: none;
+  overflow: hidden;
+  border: 1px solid var(--theme-foreground-faintest);
+  border-radius: 8px;
+  background: var(--theme-background-alt);
+  font: 13px/1.35 var(--sans-serif);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mapa.tela-cheia,
+.mapa:fullscreen {
+  border: 0;
+  border-radius: 0;
+}
+.mapa-camada {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mapa-interacao {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+.mapa-interacao:active {
+  cursor: grabbing;
+}
+.mapa-barra {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 56px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.mapa-barra > * {
+  pointer-events: auto;
+}
+.mapa-modo {
+  display: inline-flex;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--theme-background);
+}
+.mapa button {
+  font: inherit;
+  color: var(--theme-foreground-alt);
+  background: var(--theme-background);
+  border: 0;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.mapa button:hover {
+  color: var(--theme-foreground);
+}
+.mapa button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.mapa-modo button + button {
+  border-left: 1px solid var(--theme-foreground-faint);
+}
+.mapa-modo button[aria-pressed="true"] {
+  color: var(--theme-background);
+  background: var(--theme-foreground-alt);
+}
+.mapa-busca {
+  font: inherit;
+  flex: 1 1 7em;
+  min-width: 7em;
+  max-width: 15em;
+  padding: 5px 9px;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 6px;
+  color: var(--theme-foreground);
+  background: var(--theme-background);
+}
+.mapa-zoom {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mapa-zoom button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.mapa-zoom button + button {
+  border-top: 1px solid var(--theme-foreground-faintest);
+}
+.mapa-legenda {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: calc(100% - 20px);
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--theme-background) 88%, transparent);
+  color: var(--theme-foreground-alt);
+  pointer-events: none;
+}
+.mapa-legenda-itens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.mapa-legenda-itens span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mapa-legenda i,
+.mapa-info td i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.mapa-escala {
+  margin-top: 2px;
+  color: var(--theme-foreground-muted);
+  font-variant-numeric: tabular-nums;
+}
+.mapa-rampa-titulo {
+  margin-bottom: 4px;
+}
+.mapa-rampa {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  width: min(300px, 70vw);
+  height: 10px;
+}
+.mapa-rampa i {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+}
+.mapa-rampa-marcas {
+  position: relative;
+  width: min(300px, 70vw);
+  height: 14px;
+  font-size: 11px;
+  color: var(--theme-foreground-muted);
+  font-variant-numeric: tabular-nums;
+}
+.mapa-rampa-marcas span {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+}
+.mapa-rampa-lados {
+  display: flex;
+  justify-content: space-between;
+  width: min(300px, 70vw);
+  font-size: 12px;
+}
+.mapa-dica {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-foreground) 80%, transparent);
+  color: var(--theme-background);
+  text-align: center;
+  pointer-events: none;
+}
+.mapa-info {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 190px;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-foreground-faintest);
+  border-radius: 6px;
+  background: var(--theme-background);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
+  pointer-events: none;
+  z-index: 2;
+}
+.mapa-info strong {
+  display: block;
+  font-weight: 600;
+}
+.mapa-info-sub,
+.mapa-info-nota {
+  color: var(--theme-foreground-muted);
+  font-size: 12px;
+}
+.mapa-info table {
+  margin: 4px 0 0;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.mapa-info td {
+  padding: 1px 0;
+  border: 0;
+}
+.mapa-info td + td {
+  padding-left: 10px;
+  text-align: right;
+}
+.mapa-info td i {
+  margin-right: 6px;
+}
+.mapa-aviso {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--theme-foreground-muted);
+}

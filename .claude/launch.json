@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel-apuracao",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "eleicoes", "ao-vivo", "--sem-navegador"],
+      "port": 8765
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "site", "run", "dev", "--", "--port", "3000", "--no-open"],
+      "port": 3000
+    }
+  ]
+}
