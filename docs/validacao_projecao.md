@@ -1,6 +1,6 @@
 # Validação da projeção do 2º turno
 
-> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 09/10/2026 12:17. Não editar à mão.
+> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 09/10/2026 17:08. Não editar à mão.
 
 Método em `src/eleicoes/modelos/projecao.py` e na Metodologia do site. Cada ano é refeito dia a dia, só com o que se sabia em cada dia (o 1º turno das urnas e as pesquisas concluídas até ali).
 
