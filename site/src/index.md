@@ -10,22 +10,21 @@ const resultados = FileAttachment("data/resultados.json").json();
 ```
 
 ```js
-// Cada cartão leva à página do ano e mostra o 2º turno em pontos (components/polos.js); enquanto o 2º turno não tem
-// resultado (2026, até a eleição), o 1º, com os outros candidatos no meio.
+// Cada cartão leva à página do ano e mostra o eleitorado em pontos (components/polos.js), somando os turnos já
+// apurados: em 2026, até a eleição, só o 1º.
 const ANOS = ["2018", "2022", "2026"];
-const turnoDe = (ano) => (resultados[ano]["2"] ? "2" : "1");
-const antesDo2 = ANOS.filter((ano) => turnoDe(ano) === "1");
+const antesDo2 = ANOS.filter((ano) => !resultados[ano]["2"]);
 function cartao(ano, i) {
   const e = eleicoes.eleicoes[ano];
-  const turno = turnoDe(ano);
+  const turnos = Object.values(resultados[ano]).map((t) => t.Brasil);
   const [, mes, dia] = e.turno2.data.split("-");
   return html`<a class="card cartao" href="./${ano}" aria-label=${`${ano}: ${e.petismo.nome} × ${e.bolsonarismo.nome}`}>
     <div class="cartao-topo">
       <span class="cartao-ano">${ano}</span>
-      ${turno === "1" ? html`<span class="selo">2º turno em ${+dia}/${+mes}</span>` : ""}
+      ${turnos.length < 2 ? html`<span class="selo">2º turno em ${+dia}/${+mes}</span>` : ""}
       <span class="cartao-seta" aria-hidden="true">→</span>
     </div>
-    ${polos(resultados[ano][turno].Brasil, {semente: +ano, atraso: 0.15 * i})}
+    ${polos(turnos, {semente: +ano, atraso: 0.15 * i})}
     <div class="cartao-nomes"><span>${e.petismo.nome}</span><span>${e.bolsonarismo.nome}</span></div>
   </a>`;
 }
@@ -41,7 +40,7 @@ function cartao(ano, i) {
   ${cartao("2026", 2)}
 </div>
 
-<p class="nota">Cada ponto é 1% dos votos válidos do 2º turno: vermelho para o lulismo/petismo, azul para o bolsonarismo.${antesDo2.length ? ` Em ${antesDo2.join(" e ")}, até o 2º turno, os pontos são do 1º, e os cinza, no meio, são dos outros candidatos.` : ""}</p>
+<p class="nota">Cada ponto é 0,5% do eleitorado, somando o 1º e o 2º turno: vermelho para o lulismo/petismo, azul para o bolsonarismo, violeta para os outros candidatos e cinza para brancos, nulos e abstenções.${antesDo2.length ? ` Em ${antesDo2.join(" e ")}, até o 2º turno, só o 1º.` : ""} Passe o cursor (ou o dedo) pelos pontos para misturá-los.</p>
 
 ## O que há aqui
 
@@ -66,21 +65,19 @@ a.card.cartao:hover .cartao-seta { transform: translateX(4px); color: var(--them
 /* cada nome embaixo do disco do seu campo: os discos ficam a 1/4 e a 3/4 da largura */
 .cartao-nomes { display: grid; grid-template-columns: 1fr 1fr; text-align: center; font: 600 14px/1.3 var(--sans-serif); color: var(--theme-foreground-alt); }
 
-/* Os pontos (components/polos.js): saem misturados do centro e se separam; ao passar o mouse, os dois campos se afastam */
-.polos { display: block; width: 100%; height: auto; overflow: visible; }
+/* Os pontos (components/polos.js). No celular, arrastar o dedo para os lados mexe nos pontos; para cima e para baixo,
+   rola a página. O violeta dos outros candidatos é mais escuro que o vermelho e o azul nos dois temas: assim ele se
+   distingue do azul também para quem não enxerga bem o vermelho (protanopia e deuteranopia). O cinza de brancos, nulos
+   e abstenções é o neutro dos gráficos do site. */
+.polos { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; --violeta: #622c91; }
 .polos .petismo { fill: var(--petismo); }
 .polos .bolsonarismo { fill: var(--bolsonarismo); }
-.polos .outros { fill: var(--outros); }
-.polos .polo { transition: transform 0.8s cubic-bezier(0.3, 0, 0.2, 1); }
-a.card.cartao:hover .polo.petismo { transform: translateX(-7px); }
-a.card.cartao:hover .polo.bolsonarismo { transform: translateX(7px); }
-.polos circle { animation: polos-separar 1.6s cubic-bezier(0.65, 0, 0.25, 1) var(--atraso) backwards; }
-.polos .vaga-x { animation: polos-vagar-x var(--t) ease-in-out var(--fase) infinite alternate; }
-.polos .vaga-y { animation: polos-vagar-y var(--t) ease-in-out var(--fase) infinite alternate; }
-@keyframes polos-separar { from { transform: translate(var(--dx), var(--dy)); } }
-@keyframes polos-vagar-x { from { transform: translateX(calc(-1 * var(--a))); } to { transform: translateX(var(--a)); } }
-@keyframes polos-vagar-y { from { transform: translateY(calc(-1 * var(--a))); } to { transform: translateY(var(--a)); } }
+.polos .outros { fill: var(--violeta); }
+.polos .nenhum { fill: var(--outros); }
+@media (prefers-color-scheme: dark) {
+  .polos { --violeta: #7f4bb1; }
+}
 @media (prefers-reduced-motion: reduce) {
-  a.card.cartao, .cartao-seta, .polos, .polos * { animation: none !important; transition: none !important; }
+  a.card.cartao, .cartao-seta { transition: none; }
 }
 </style>
