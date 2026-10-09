@@ -40,7 +40,7 @@ function cartao(ano, i) {
   ${cartao("2026", 2)}
 </div>
 
-<p class="nota">Cada ponto é 0,5% do eleitorado, somando o 1º e o 2º turno: vermelho para o lulismo/petismo, azul para o bolsonarismo, violeta para os outros candidatos e cinza para brancos, nulos e abstenções.${antesDo2.length ? ` Em ${antesDo2.join(" e ")}, até o 2º turno, só o 1º.` : ""} Passe o cursor (ou o dedo) pelos pontos para misturá-los.</p>
+<p class="nota">Cada ponto é 0,5% do eleitorado, somando o 1º e o 2º turno: vermelho para o lulismo/petismo, azul para o bolsonarismo, violeta para os outros candidatos e cinza para brancos, nulos e abstenções.${antesDo2.length ? ` Em ${antesDo2.join(" e ")}, até o 2º turno, só o 1º.` : ""}</p>
 
 ## O que há aqui
 
