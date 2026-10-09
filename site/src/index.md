@@ -4,28 +4,29 @@ toc: false
 ---
 
 ```js
-import {COR, chances} from "./components/graficos.js";
-import {data, num, pct} from "./components/formato.js";
+import {polos} from "./components/polos.js";
 const eleicoes = FileAttachment("data/eleicoes.json").json();
 const resultados = FileAttachment("data/resultados.json").json();
-const projecao = FileAttachment("data/projecao.json").json();
 ```
 
 ```js
-const parte = (d, c) => (100 * d[c]) / d.validos;
-const e26 = eleicoes.eleicoes["2026"];
-const ch26 = chances(projecao.anos["2026"].atual);
-const fav26 = ch26.petismo >= 50 ? "petismo" : "bolsonarismo";
-function cartao(ano, turno, rodape) {
+// Cada cartão leva à página do ano e mostra o 2º turno em pontos (components/polos.js); enquanto o 2º turno não tem
+// resultado (2026, até a eleição), o 1º, com os outros candidatos no meio.
+const ANOS = ["2018", "2022", "2026"];
+const turnoDe = (ano) => (resultados[ano]["2"] ? "2" : "1");
+const antesDo2 = ANOS.filter((ano) => turnoDe(ano) === "1");
+function cartao(ano, i) {
   const e = eleicoes.eleicoes[ano];
-  const d = resultados[ano][turno].Brasil;
-  const ordem = ["petismo", "bolsonarismo"].sort((a, b) => d[b] - d[a]);
-  return html`<a class="card cartao" href="./${ano}">
-    <h2>${ano}</h2>
-    <h3>${turno}º turno · ${data(e[`turno${turno}`].data)}</h3>
-    ${ordem.map((c) => html`<div class="placar"><div class="quem"><span class="amostra" style="background:${COR[c]}"></span>${e[c].nome}</div>
-      <div class="grande">${pct(parte(d, c))}</div><div class="detalhe">${num(d[c])} votos</div></div>`)}
-    ${rodape ? html`<p class="nota">${rodape}</p>` : ""}
+  const turno = turnoDe(ano);
+  const [, mes, dia] = e.turno2.data.split("-");
+  return html`<a class="card cartao" href="./${ano}" aria-label=${`${ano}: ${e.petismo.nome} × ${e.bolsonarismo.nome}`}>
+    <div class="cartao-topo">
+      <span class="cartao-ano">${ano}</span>
+      ${turno === "1" ? html`<span class="selo">2º turno em ${+dia}/${+mes}</span>` : ""}
+      <span class="cartao-seta" aria-hidden="true">→</span>
+    </div>
+    ${polos(resultados[ano][turno].Brasil, {semente: +ano, atraso: 0.15 * i})}
+    <div class="cartao-nomes"><span>${e.petismo.nome}</span><span>${e.bolsonarismo.nome}</span></div>
   </a>`;
 }
 ```
@@ -35,10 +36,12 @@ function cartao(ano, turno, rodape) {
 <p class="lead">Um estudo de dados sobre as eleições para Presidente de 2018, 2022 e 2026, a partir dos arquivos públicos do TSE: como cada apuração se desenrolou minuto a minuto, onde cada campo venceu, local de votação por local de votação, e o que as pesquisas previam.</p>
 
 <div class="grid grid-cols-3">
-  ${cartao("2018", "2")}
-  ${cartao("2022", "2")}
-  ${cartao("2026", "1", `2º turno em ${data(e26.turno2.data)}. Na projeção, ${e26[fav26].nome} tem ${pct(ch26[fav26], 0)} de chance de vencer.`)}
+  ${cartao("2018", 0)}
+  ${cartao("2022", 1)}
+  ${cartao("2026", 2)}
 </div>
+
+<p class="nota">Cada ponto é 1% dos votos válidos do 2º turno: vermelho para o lulismo/petismo, azul para o bolsonarismo.${antesDo2.length ? ` Em ${antesDo2.join(" e ")}, até o 2º turno, os pontos são do 1º, e os cinza, no meio, são dos outros candidatos.` : ""}</p>
 
 ## O que há aqui
 
@@ -53,7 +56,31 @@ function cartao(ano, turno, rodape) {
 
 <style>
 /* O cartão inteiro é um link: o texto fica na cor normal (a cor de link é azul, que aqui é a do bolsonarismo) */
-a.card.cartao { display: grid; gap: 14px; color: var(--theme-foreground); text-decoration: none; }
-a.card.cartao:hover { border-color: var(--theme-foreground-faint); }
-a.card.cartao h2, a.card.cartao h3 { margin: 0; }
+a.card.cartao { display: grid; gap: 10px; color: var(--theme-foreground); text-decoration: none; transition: border-color 0.3s, transform 0.3s; }
+a.card.cartao:hover { border-color: var(--theme-foreground-faint); transform: translateY(-2px); }
+a.card.cartao:focus-visible { outline: 2px solid var(--theme-foreground-focus); outline-offset: 2px; }
+.cartao-topo { display: flex; align-items: center; gap: 10px; }
+.cartao-ano { font: 600 1.6rem/1 var(--sans-serif); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cartao-seta { margin-left: auto; color: var(--theme-foreground-muted); transition: transform 0.3s, color 0.3s; }
+a.card.cartao:hover .cartao-seta { transform: translateX(4px); color: var(--theme-foreground); }
+/* cada nome embaixo do disco do seu campo: os discos ficam a 1/4 e a 3/4 da largura */
+.cartao-nomes { display: grid; grid-template-columns: 1fr 1fr; text-align: center; font: 600 14px/1.3 var(--sans-serif); color: var(--theme-foreground-alt); }
+
+/* Os pontos (components/polos.js): saem misturados do centro e se separam; ao passar o mouse, os dois campos se afastam */
+.polos { display: block; width: 100%; height: auto; overflow: visible; }
+.polos .petismo { fill: var(--petismo); }
+.polos .bolsonarismo { fill: var(--bolsonarismo); }
+.polos .outros { fill: var(--outros); }
+.polos .polo { transition: transform 0.8s cubic-bezier(0.3, 0, 0.2, 1); }
+a.card.cartao:hover .polo.petismo { transform: translateX(-7px); }
+a.card.cartao:hover .polo.bolsonarismo { transform: translateX(7px); }
+.polos circle { animation: polos-separar 1.6s cubic-bezier(0.65, 0, 0.25, 1) var(--atraso) backwards; }
+.polos .vaga-x { animation: polos-vagar-x var(--t) ease-in-out var(--fase) infinite alternate; }
+.polos .vaga-y { animation: polos-vagar-y var(--t) ease-in-out var(--fase) infinite alternate; }
+@keyframes polos-separar { from { transform: translate(var(--dx), var(--dy)); } }
+@keyframes polos-vagar-x { from { transform: translateX(calc(-1 * var(--a))); } to { transform: translateX(var(--a)); } }
+@keyframes polos-vagar-y { from { transform: translateY(calc(-1 * var(--a))); } to { transform: translateY(var(--a)); } }
+@media (prefers-reduced-motion: reduce) {
+  a.card.cartao, .cartao-seta, .polos, .polos * { animation: none !important; transition: none !important; }
+}
 </style>

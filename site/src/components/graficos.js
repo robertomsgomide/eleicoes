@@ -37,8 +37,29 @@ export function placar({nome, cor, valor, votos, detalhe, casas = 2}) {
 }
 
 // No lugar de um gráfico ou do mapa, enquanto o turno não tem dados (o 2º turno de 2026 até a eleição).
-export function naoDivulgado(texto, {altura = 240} = {}) {
-  return html`<div class="nao-divulgado" style="min-height:${altura}px"><strong>Não divulgado</strong><span>${texto}</span></div>`;
+export function naoDivulgado(texto, {altura = 240, titulo = "Não divulgado"} = {}) {
+  return html`<div class="nao-divulgado" style="min-height:${altura}px"><strong>${titulo}</strong><span>${texto}</span></div>`;
+}
+
+// Os cartões do resultado de um turno (b: o Brasil em data/resultados.json): os dois campos, quem teve mais votos
+// primeiro; no 1º turno, os outros candidatos; e o comparecimento. Sem resultado (o 2º turno de 2026 até a eleição),
+// os placares dizem "Não divulgado", com `pendente` embaixo, e a ordem dos dois vem em `ordem`. Espaço fixo entre o
+// número e a palavra: em cartões estreitos, a linha não quebra entre os dois.
+export function placaresResultado(b, {turno, nomes, ordem, pendente = ""}) {
+  const parte = (c) => b && (100 * b[c]) / b.validos;
+  const cartoes = [
+    ...(ordem ?? [...CAMPOS].sort((x, y) => b[y] - b[x])).map((c) => ({nome: nomes[c], cor: COR[c], valor: parte(c), votos: b?.[c], detalhe: b ? "" : pendente})),
+    ...(turno === 1 ? [{nome: "Outros candidatos", cor: COR.outros, valor: parte("outros"), votos: b?.outros, detalhe: b ? `${b.candidatos.length - 2}\u00a0candidatos` : pendente}] : []),
+    {nome: "Comparecimento", valor: b && (100 * b.comparecimento) / b.aptos, detalhe: b ? `${num(b.comparecimento)} de ${num(b.aptos)}\u00a0eleitores` : pendente}
+  ];
+  return html`<div class="grid grid-cols-${cartoes.length} placares">${cartoes.map((c) => html`<div class="card">${placar(c)}</div>`)}</div>`;
+}
+
+// Nota sob o resultado: de onde vêm os números do turno (o campo `fonte` de data/resultados.json).
+export function fonteResultado(res) {
+  return res.fonte === "boletins de urna e total oficial do TSE"
+    ? "Fonte: votos dos candidatos, total oficial do TSE; eleitorado, comparecimento, brancos e nulos, boletins de urna."
+    : `Fonte: ${res.fonte}.`;
 }
 
 // ---- Dados ----------------------------------------------------------------------------
@@ -554,9 +575,22 @@ export function resumoErro(t, nomes) {
   return `Na média das ${t.pesquisas_semana_final} pesquisas da semana final, ${nomes.petismo} tinha ${pct(m.petismo, 1)} e ${nomes.bolsonarismo}, ${pct(m.bolsonarismo, 1)} dos válidos; as urnas deram ${pct(r.petismo, 1)} e ${pct(r.bolsonarismo, 1)}. A média ${lado("bolsonarismo")} e ${lado("petismo")}.`;
 }
 
-// Última pesquisa de cada instituto na semana final × resultado.
-export function tabelaUltimas(t, nomes) {
-  const linhas = t.ultimas;
+// A última pesquisa de cada instituto. Com o resultado, a da semana final, que a tabela compara com as urnas
+// (t.ultimas). Antes dele (o 2º turno de 2026, até a eleição), a mais recente de cada instituto entre as de campo
+// inteiro depois do 1º turno, as mesmas da tendência e da projeção: muda a cada pesquisa nova.
+export function ultimasPesquisas(t) {
+  if (t.resultado || !t.primeiro_turno) return t.ultimas;
+  const ultimas = new Map();
+  for (const p of t.pesquisas) {
+    if (p.inicio > t.primeiro_turno && !(ultimas.get(p.instituto)?.fim >= p.fim)) ultimas.set(p.instituto, p);
+  }
+  return [...ultimas.values()]
+    .sort((a, b) => b.fim.localeCompare(a.fim) || a.instituto.localeCompare(b.instituto, "pt-BR"))
+    .map((p) => ({instituto: p.instituto, fim: p.fim, registro: p.registro, petismo: p.petismo_validos, bolsonarismo: p.bolsonarismo_validos}));
+}
+
+// A última pesquisa de cada instituto (linhas: ultimasPesquisas) e, com o resultado, o erro de cada uma.
+export function tabelaUltimas(t, nomes, linhas = t.ultimas) {
   const erro = (v) => (v == null ? "–" : pp(v, 1));
   const media = t.media_semana_final;
   return html`<table>

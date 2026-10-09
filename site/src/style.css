@@ -80,6 +80,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Os cartões do resultado (placaresResultado): no 1º turno, os quatro numa linha só, como os três do 2º turno,
+   quando cabem; o Framework só põe quatro colunas a partir de 1080px */
+@container (min-width: 860px) {
+  .grid-cols-4.placares {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 /* Resultado que ainda não saiu: no placar e no lugar de um gráfico ou do mapa */
 .placar .grande.pendente {
   font-size: 1.5rem;
