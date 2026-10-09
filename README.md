@@ -79,7 +79,7 @@ src/eleicoes/          o código (pacote Python)
   atualizacao.py       pesquisas novas e projeção atualizadas sozinhas até o 2º turno (atualizar, agendar)
 site/                  o site com as abas (Observable Framework)
   src/*.md             as páginas: Início, 2018, 2022, 2026, Comparações, Metodologia
-  src/components/      gráficos (Observable Plot), o mapa (WebGL + canvas) e formatação em pt-BR
+  src/components/      gráficos (Observable Plot), o mapa (WebGL + canvas), os pontos da página inicial e formatação em pt-BR
   src/data/            JSON gerados por `uv run eleicoes site`
 tests/                 testes (inclusive contra os totais oficiais)
 docs/                  roteiro, metodologia, dicionário de dados
