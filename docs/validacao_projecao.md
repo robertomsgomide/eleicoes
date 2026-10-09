@@ -1,6 +1,6 @@
 # Validação da projeção do 2º turno
 
-> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 09/10/2026 04:23. Não editar à mão.
+> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 09/10/2026 12:17. Não editar à mão.
 
 Método em `src/eleicoes/modelos/projecao.py` e na Metodologia do site. Cada ano é refeito dia a dia, só com o que se sabia em cada dia (o 1º turno das urnas e as pesquisas concluídas até ali).
 
@@ -10,7 +10,7 @@ Método em `src/eleicoes/modelos/projecao.py` e na Metodologia do site. Cada ano
 |---|---|--:|--:|--:|---|--:|--:|
 | 2018 | 27/10 | 25 | 45,27% | 44,82% | 42,9% a 46,7% | 0% | 44,87% |
 | 2022 | 29/10 | 50 | 53,24% | 51,73% | 49,9% a 53,6% | 89% | 50,90% |
-| 2026 | 09/10 | 2 | 48,20% | 47,94% | 45,3% a 50,6% | 16% | – |
+| 2026 | 09/10 | 3 | 48,20% | 48,29% | 45,7% a 50,9% | 20% | – |
 
 ## Erros em 2018 e 2022
 
@@ -36,15 +36,15 @@ Cada desvio 40% menor e 40% maior, com os outros como no modelo. Nos anos já de
 
 | Desvio | Valor | 2018 | 2022 | 2026 |
 |---|--:|--:|--:|--:|
-| **como no modelo** |  | 1,01 · 100% | 1,63 · 100% | 16% |
-| ponto de partida | 1,50 | 0,39 · 100% | 1,96 · 29% | 8% |
-| ponto de partida | 3,50 | 1,52 · 86% | 1,41 · 100% | 19% |
-| uma pesquisa | 1,20 | 1,09 · 100% | 1,61 · 96% | 15% |
-| uma pesquisa | 2,80 | 0,92 · 100% | 1,66 · 100% | 16% |
-| erro comum na véspera | 0,90 | 1,16 · 86% | 1,54 · 96% | 15% |
-| erro comum na véspera | 2,10 | 0,84 · 100% | 1,74 · 100% | 17% |
-| mudança por raiz de dia | 0,42 | 1,36 · 76% | 1,48 · 96% | 12% |
-| mudança por raiz de dia | 0,98 | 0,71 · 100% | 1,77 · 100% | 18% |
+| **como no modelo** |  | 1,01 · 100% | 1,63 · 100% | 20% |
+| ponto de partida | 1,50 | 0,39 · 100% | 1,96 · 29% | 10% |
+| ponto de partida | 3,50 | 1,52 · 86% | 1,41 · 100% | 25% |
+| uma pesquisa | 1,20 | 1,09 · 100% | 1,61 · 96% | 20% |
+| uma pesquisa | 2,80 | 0,92 · 100% | 1,66 · 100% | 20% |
+| erro comum na véspera | 0,90 | 1,16 · 86% | 1,54 · 96% | 20% |
+| erro comum na véspera | 2,10 | 0,84 · 100% | 1,74 · 100% | 20% |
+| mudança por raiz de dia | 0,42 | 1,36 · 76% | 1,48 · 96% | 18% |
+| mudança por raiz de dia | 0,98 | 0,71 · 100% | 1,77 · 100% | 21% |
 
 ## Parâmetros
 
