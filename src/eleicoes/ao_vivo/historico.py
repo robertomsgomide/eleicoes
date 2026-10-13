@@ -1,5 +1,4 @@
-"""Reconstrói o histórico da apuração para Presidente, durante a própria apuração,
-a partir dos arquivos públicos de resultados.tse.jus.br e gera gráfico + CSV.
+"""Lê os arquivos públicos de resultados.tse.jus.br durante a apuração para Presidente e reconstrói o histórico dela.
 
 Feito na noite do 1º turno de 2026, quando o TSE ainda não tinha publicado os
 boletins de urna. Ele só publica o retrato atual dos totais, mas publica, para
@@ -11,11 +10,8 @@ de configuração das seções, "-cs.json", um por UF). Com isso:
     por seção do seu município (o TSE não divulga resultado abaixo do município
     no arquivo de resultados).
 
-Uso:  uv run eleicoes historico     (pode rodar de novo durante a apuração;
-                                     só baixa de novo o que mudou)
-A eleição acompanhada vem de [ao_vivo] em config/eleicoes.toml. Saídas em
-dados/processado/ao_vivo/<ciclo>-<eleicao>/historico_estimado.{csv,png}.
-O painel ao vivo (servidor.py) e a coleta na nuvem (coletor.py e juntar.py) importam este módulo.
+A eleição acompanhada vem de [ao_vivo] em config/eleicoes.toml. Quem usa este módulo é a coleta na nuvem:
+coletor.py lê o TSE com coletar() e refaz a série com reconstruir(); juntar.py grava o CSV e o gráfico no fim.
 """
 import collections
 import concurrent.futures as cf
@@ -49,8 +45,6 @@ def url_secoes(uf):
 URL_BR = url_resultado("br")
 URL_MUNICIPIOS = f"{BASE}/{CICLO}/{ELEICAO}/config/mun-e{ELEICAO.zfill(6)}-cm.json"
 CACHE = AV.cache
-SAIDA_CSV = AV.processado / "historico_estimado.csv"
-SAIDA_PNG = AV.processado / "historico_estimado.png"
 PARALELO = 8
 ESPERA_ERRO = 600  # s até tentar de novo um arquivo que deu erro (em 13/10, o -cs.json do 2º turno de TO dava 404)
 
@@ -320,30 +314,8 @@ def horario_oficial(br):
     return dt.datetime.strptime(f"{br['dt']} {br['ht']}", "%d/%m/%Y %H:%M:%S")
 
 
-# ---- Linha de comando: CSV + PNG ---------------------------------------------
-def main():
-    print("1/3  Horários das seções e resultados municipais (27 UFs + exterior)…")
-    c = coletar()
-    print("2/3  Reconstruindo a série minuto a minuto…")
-    s = reconstruir(c)
-    print(f"     {s['total_secoes']:,} seções, {s['recebidas'][-1]:,} com boletim recebido "
-          f"(arquivo nacional do TSE: {s['oficial']['ts']:,} seções)".replace(",", "."))
-    gravar_csv(s)
-
-    # conferência: a reconstrução no horário do arquivo nacional contra o total oficial dele
-    of = s["oficial"]
-    h_of = horario_oficial(c["br"])
-    i = max(0, min(len(s["t"]) - 1, int((h_of - INICIO_DIVULGACAO).total_seconds() // 60)))
-    print(f"3/3  Conferência com o arquivo nacional do TSE de {of['dt']} {of['ht']} "
-          f"({of['pst']:.2f}% das seções totalizadas):")
-    for cand, o in list(zip(s["cand"], of["cand"]))[:4]:
-        print(f"     {cand['nome']:<22} reconstruído {cand['pct'][i] or 0:6.2f}%   oficial {o['p'] or 0:6.2f}%")
-
-    plotar(s, h_of)
-    print(f"\nPronto: {SAIDA_PNG.relative_to(config.RAIZ)} e {SAIDA_CSV.relative_to(config.RAIZ)}")
-
-
-def gravar_csv(s, arq=SAIDA_CSV):
+# ---- CSV + PNG (historico_estimado, gravados por juntar.py) ---------------------
+def gravar_csv(s, arq):
     arq.parent.mkdir(parents=True, exist_ok=True)
     with open(arq, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
@@ -357,7 +329,7 @@ def gravar_csv(s, arq=SAIDA_CSV):
                         *[x for cand in s["cand"] for x in (cand["votos"][i], br_num(cand["pct"][i]))]])
 
 
-def plotar(s, h_of, arq=SAIDA_PNG):
+def plotar(s, h_of, arq):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.dates as mdates

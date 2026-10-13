@@ -35,12 +35,6 @@ def main(argv=None):
 
     sub.add_parser("site", help="gera os dados do site (site/src/data) a partir de dados/processado")
 
-    av = sub.add_parser("ao-vivo", help="painel da apuração ao vivo em http://localhost:8765")
-    av.add_argument("--publico", action="store_true", help="gera um link https temporário para compartilhar")
-    av.add_argument("--sem-navegador", action="store_true", help="não abre o navegador")
-
-    sub.add_parser("historico", help="reconstrói a apuração (estimada) da eleição ao vivo e gera CSV + PNG")
-
     co = sub.add_parser("coletar", help="coleta da apuração na nuvem (GitHub Actions): um dos três coletores")
     co.add_argument("coletor", nargs="?", choices=list("abc"))
     co.add_argument("--plano", action="store_true", help="só diz o que a rodada do workflow faz agora (chave=valor)")
@@ -82,12 +76,6 @@ def main(argv=None):
             print("Gerando os dados do site em site/src/data")
             site.gerar()
             print("Para ver o site:  cd site  e  npm run dev")
-        elif a.comando == "ao-vivo":
-            from eleicoes.ao_vivo import servidor
-            servidor.rodar(publico=a.publico, abrir_navegador=not a.sem_navegador)
-        elif a.comando == "historico":
-            from eleicoes.ao_vivo import historico
-            historico.main()
         elif a.comando == "coletar":
             from eleicoes.ao_vivo import coletor
             if a.plano:

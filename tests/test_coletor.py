@@ -161,7 +161,7 @@ def test_rodadas_gravam_o_primeiro_horario_de_cada_secao_e_cada_versao_nova(tse,
     # as UFs sem arquivo de resultado deram erro uma vez e só são lidas de novo 10 min depois
     assert len(rodadas[0]["falhas_uf"]) == len(H.UFS) - 1 and rodadas[1]["falhas_uf"] == []
 
-    p = c.painel()["dados"]  # o mesmo formato do painel local
+    p = c.painel()["dados"]  # o dados.json do ramo
     assert p["recebidas"][-1] == 2 and [o["h"] for o in p["oficiais"]] == ["2026-10-25T17:02:00", "2026-10-25T17:06:00"]
 
     # o job seguinte retoma do ramo: não grava de novo o que este já gravou

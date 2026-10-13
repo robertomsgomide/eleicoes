@@ -1,8 +1,9 @@
 """A noite da apuração como foi gravada ao vivo (dados/bruto/ao_vivo/<ciclo>-<eleicao>).
 
-- leituras_oficiais.json: cada retrato do arquivo nacional do TSE lido pelo painel ao vivo (exato);
-- historico_estimado.csv: reconstrução feita durante a noite pela média municipal (estimada, só até a hora
-  em que foi gerada), usada para cobrir o começo da noite, antes da primeira leitura oficial gravada.
+- leituras_oficiais.json: cada retrato do arquivo nacional do TSE lido durante a apuração (exato); no 1º turno, pelo
+  painel que rodava no computador; no 2º, pelos coletores na nuvem (ao_vivo/coletor.py);
+- historico_estimado.csv: reconstrução pela média municipal (estimada), usada para cobrir o começo da noite, antes da
+  primeira leitura oficial gravada; no 1º turno, feita durante a noite e só até a hora em que foi gerada.
 
 Fica no site até o TSE publicar os boletins de urna daquele turno; aí a curva exata substitui as duas.
 """

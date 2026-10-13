@@ -70,7 +70,7 @@ def inicio_divulgacao(ano, numero):
 
 @dataclasses.dataclass(frozen=True)
 class AoVivo:
-    """A eleição que o painel ao vivo acompanha em resultados.tse.jus.br."""
+    """A eleição que a coleta na nuvem acompanha em resultados.tse.jus.br."""
     ano: int
     turno: int
     ciclo: str
@@ -78,7 +78,6 @@ class AoVivo:
     eleicao: str
     cargo: str
     inicio: dt.datetime
-    porta: int
 
     @property
     def chave(self):
@@ -87,10 +86,6 @@ class AoVivo:
     @property
     def bruto(self):  # leituras gravadas durante a apuração: não dá para baixar de novo depois
         return BRUTO / "ao_vivo" / self.chave
-
-    @property
-    def processado(self):
-        return PROCESSADO / "ao_vivo" / self.chave
 
     @property
     def cache(self):
@@ -108,7 +103,6 @@ def ao_vivo():
     faltam = [k for k in ("pleito", "eleicao") if not t.get(k)]
     if faltam:
         raise SystemExit(f"Preencha {', '.join(faltam)} de eleicoes.{a['ano']}.turno{a['turno']} "
-                         f"em {ARQ_CONFIG.relative_to(RAIZ)} antes de abrir o painel ao vivo.")
+                         f"em {ARQ_CONFIG.relative_to(RAIZ)} antes de coletar a apuração.")
     return AoVivo(ano=a["ano"], turno=a["turno"], ciclo=f"ele{a['ano']}", pleito=t["pleito"],
-                  eleicao=t["eleicao"], cargo=a["cargo"], inicio=inicio_divulgacao(a["ano"], a["turno"]),
-                  porta=a["porta"])
+                  eleicao=t["eleicao"], cargo=a["cargo"], inicio=inicio_divulgacao(a["ano"], a["turno"]))

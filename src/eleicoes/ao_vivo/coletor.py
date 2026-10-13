@@ -21,7 +21,8 @@ O que cada job grava, em <ramo>/<job>/ (cada envio fecha os pedaços abertos; os
   secoes-NNNN.csv          uf,municipio,zona,secao,recebido,visto: cada seção na primeira vez que aparece recebida
   rodadas-NNNN.jsonl       cada leitura do TSE: duração, erro, % totalizado
   job.json                 quem, quando, até quando
-E <ramo>/dados.json: o mesmo que o painel local (servidor.py) entrega em /dados.json, refeito a cada envio.
+E <ramo>/dados.json, refeito a cada envio, para acompanhar a noite: a apuração reconstruída minuto a minuto
+(historico.reconstruir) e as leituras oficiais do país.
 """
 import concurrent.futures as cf
 import datetime as dt
@@ -35,12 +36,14 @@ import time
 import urllib.error
 
 from eleicoes.ao_vivo import historico as H
-from eleicoes.ao_vivo.servidor import FOLGA_MUN, LIMITE_MUN, REVISITA_MUN
 from eleicoes.formato_tse import candidatos, num
 
 AV = H.AV
 COLETORES = "abc"
 INTERVALO = 60                                   # s entre duas leituras de um coletor (o TSE guarda os arquivos ~60 s)
+LIMITE_MUN = 400                                 # resultados municipais por rodada, para não martelar o TSE
+FOLGA_MUN = 0.15                                 # só relê um município quando ele recebeu 15% a mais de seções
+REVISITA_MUN = 180                               # e no máximo uma vez a cada 3 minutos
 DEFASAGEM = INTERVALO // len(COLETORES)          # 20 s entre um coletor e o seguinte
 ENVIO = 180                                      # s entre dois envios para o ramo
 PERIODO = 340                                    # min entre duas trocas de job de um coletor (um job dura até 6 h)
@@ -333,7 +336,7 @@ class Coletor:
                  + "".join(f" · {a}" for a in avisos if a))
 
     def painel(self):
-        """O mesmo que o painel local entrega em /dados.json (servidor.py), com quem coletou e quando."""
+        """O dados.json: a série minuto a minuto, as leituras oficiais do país, quem coletou e quando."""
         s = H.reconstruir(self.c, max_cand=4)
         s["t"] = [t.strftime("%Y-%m-%dT%H:%M") for t in s["t"]]
         s["oficiais"] = [{"h": l["h"], "pst": l["pst"], "cand": l["cand"]} for _, l in sorted(self.br.items())]

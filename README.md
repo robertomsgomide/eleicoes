@@ -28,15 +28,12 @@ uv run eleicoes projecao         # projeção do 2º turno e a validação em 20
 uv run eleicoes atualizar        # pesquisa nova na Wikipedia? confere e refaz as pesquisas e a projeção do site
 uv run eleicoes agendar          # o mesmo pelo Agendador de Tarefas do Windows, no próprio computador (--remover apaga)
 uv run eleicoes site             # dados do site -> site/src/data (JSON, versionados no git)
-uv run eleicoes ao-vivo          # painel da apuração ao vivo em http://localhost:8765
-uv run eleicoes ao-vivo --publico   # idem, com link https temporário (precisa do cloudflared)
-uv run eleicoes historico        # reconstrução estimada da apuração ao vivo -> CSV + PNG
 uv run eleicoes coletar a        # um dos três coletores da apuração na nuvem (quem roda é o GitHub Actions; ver abaixo)
 uv run eleicoes juntar <ramos>   # junta o que os coletores gravaram em dados/bruto/ao_vivo/<eleição>
 uv run pytest                    # testes
 ```
 
-A eleição acompanhada ao vivo (pelo painel e pelos coletores) é escolhida em `[ao_vivo]` no
+A eleição acompanhada ao vivo pelos coletores é escolhida em `[ao_vivo]` no
 [config/eleicoes.toml](config/eleicoes.toml).
 
 ### A noite do 2º turno, gravada na nuvem
@@ -94,7 +91,7 @@ npm run build      # site estático em site/dist, sem nenhuma dependência exter
 .github/workflows/     publicação do site no GitHub Pages, atualização a cada hora e a coleta da apuração (GitHub Actions)
 config/eleicoes.toml   anos, turnos, códigos do TSE, candidatos e cores de cada campo
 src/eleicoes/          o código (pacote Python)
-  ao_vivo/             painel da apuração em tempo real e a coleta dela na nuvem (coletor.py, juntar.py)
+  ao_vivo/             a coleta da apuração na nuvem (coletor.py, juntar.py; leitura do TSE em historico.py)
   coleta/              downloads (TSE, IBGE, pesquisas)            [Etapa 1]
   tratamento/          dados brutos -> tabelas limpas              [Etapa 1]
   analises/            o que alimenta o site (apuração no tempo, resultados, pesquisas, mapa)

@@ -68,7 +68,7 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
 ## Coleta da noite de 25/10: decisões (13/10/2026)
 
 - **GitHub Actions, não Worker do Cloudflare**: grátis com o repositório público, sem conta nova, com o mesmo Python
-  do painel local. O Worker exigiria reescrever a coleta em JavaScript e pagar o plano de US$ 5: o `-cs.json` de SP tem
+  que leu o TSE na noite do 1º turno. O Worker exigiria reescrever a coleta em JavaScript e pagar o plano de US$ 5: o `-cs.json` de SP tem
   6,3 MB (104 mil seções) e o plano gratuito dá 10 ms de CPU por execução. Conferido em 13/10: os runners do GitHub
   leem `resultados.tse.jus.br` (todos 200, inclusive 20 leituras seguidas).
 - **Sem depender do cron para começar**: de 08 a 13/10, o cron "a cada hora" do `site.yml` rodou 21 vezes, com
@@ -84,8 +84,11 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
   de novo 10 min depois, porque o TSE bloqueia IPs que acumulam erros. Em 13/10, o `-cs.json` do 2º turno de Tocantins
   dava 404 (todas as outras UFs saíram em 09/10): uma UF sem esse arquivo não derruba a rodada, e os municípios dela
   são lidos pela configuração da eleição.
-- **Painel e forecast da noite** (resto da Etapa 6): leem o que os coletores gravam (`dados.json` de cada ramo,
-  igual ao do painel local). Onde servir o painel fica para outra sessão.
+- **Painel e forecast da noite** (resto da Etapa 6): na página de 2026 do site, em outra sessão, lendo o que os
+  coletores gravam (`dados.json` de cada ramo).
+- **Sem o painel local**: o painel que rodava no computador (`uv run eleicoes ao-vivo`, com o link do cloudflared) e o
+  comando `historico`, improvisados na noite do 1º turno, saíram do código. O `historico.py` ficou como a leitura do
+  TSE que os coletores usam; o que a noite do 1º turno gravou continua em `dados/bruto/ao_vivo/ele2026-6257`.
 
 ## O que os dados permitem (verificado em 05/10/2026; 2026 atualizado em 07/10)
 
@@ -108,7 +111,7 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
   dos boletins (62% das seções até 19h, batendo com o oficial); em 05/10 às 00h54 o mesmo arquivo dava 12%
   até 19h e o Sul inteiro depois das 21h. Consequências: a curva exata de 2026 vem do boletim de urna
   (`DT_BU_RECEBIDO`), que guarda a chegada real (conferido em 07/10 com o que a noite gravou); no 2º
-  turno, o painel precisa gravar o **primeiro horário visto** de cada seção durante a noite (Etapa 6).
+  turno, os coletores na nuvem gravam o **primeiro horário visto** de cada seção durante a noite (Etapa 6).
 
 ## Exato × estimado
 

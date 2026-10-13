@@ -35,8 +35,9 @@ inteiro, também com um commit só.
 ## Na nuvem: a noite do 2º turno (ramos `ao-vivo-a`, `-b` e `-c`)
 
 Durante a apuração de 25/10, cada um dos três coletores (`.github/workflows/apuracao.yml`) grava no seu ramo, em
-pedaços que só se acrescentam (formato em `src/eleicoes/ao_vivo/coletor.py`), e mantém lá um `dados.json` igual ao do
-painel local. No fim, `uv run eleicoes juntar` junta os três em `bruto/ao_vivo/ele2026-6258/`, com um commit no `main`:
+pedaços que só se acrescentam (formato em `src/eleicoes/ao_vivo/coletor.py`), e mantém lá um `dados.json` com a
+apuração reconstruída minuto a minuto, para acompanhar a noite. No fim, `uv run eleicoes juntar` junta os três em
+`bruto/ao_vivo/ele2026-6258/`, com um commit no `main`:
 
 - `leituras_oficiais.json`: cada atualização do total do país (o mesmo formato do 1º turno, com mais totais);
 - `leituras_ufs.json`: idem, de cada UF e do exterior;

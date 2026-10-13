@@ -42,10 +42,9 @@ turno2 = { data = "2026-10-25", divulgacao = "17:00", pleito = "3221", eleicao =
 petismo = { numero = 13, nome = "Lula", partido = "PT", nas_pesquisas = "Lula" }
 bolsonarismo = { numero = 22, nome = "Flávio Bolsonaro", partido = "PL", nas_pesquisas = "Flávio" }
 
-# Eleição acompanhada ao vivo: pelo painel no computador (uv run eleicoes ao-vivo) e pela coleta na nuvem
-# (uv run eleicoes coletar, no GitHub Actions). A variável de ambiente ELEICOES_TURNO_AO_VIVO troca o turno (ensaios).
+# Eleição acompanhada ao vivo pela coleta na nuvem (uv run eleicoes coletar, no GitHub Actions).
+# A variável de ambiente ELEICOES_TURNO_AO_VIVO troca o turno (ensaios).
 [ao_vivo]
 ano = 2026
 turno = 2
 cargo = "0001"
-porta = 8765

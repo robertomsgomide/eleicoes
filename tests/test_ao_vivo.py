@@ -1,14 +1,10 @@
-"""Testes do painel ao vivo sem rede: a reconstrução com dados sintéticos e a política de segurança da página."""
-import base64
+"""Testes da reconstrução da apuração (historico.py) sem rede, com dados sintéticos."""
 import collections
 import datetime as dt
-import hashlib
-import re
 
 import pytest
 
 from eleicoes.ao_vivo import historico as H
-from eleicoes.ao_vivo import servidor
 
 
 def minuto(h, m):
@@ -50,11 +46,3 @@ def test_ultimo_ponto_bate_com_o_oficial_quando_os_municipios_estao_em_dia(colet
     s = H.reconstruir(coleta)
     for cand, of in zip(s["cand"], s["oficial"]["cand"]):
         assert cand["pct"][-1] == pytest.approx(of["p"])
-
-
-def test_politica_de_seguranca_libera_so_o_script_da_pagina():
-    html, csp = servidor.pagina_e_politica()
-    (script,) = re.findall(rb"<script>(.*?)</script>", html, re.S)
-    hash_ = base64.b64encode(hashlib.sha256(script).digest()).decode()
-    assert f"'sha256-{hash_}'" in csp
-    assert "connect-src 'self'" in csp and "'unsafe-inline'" not in csp.split("style-src")[0]
