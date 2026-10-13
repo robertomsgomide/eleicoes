@@ -50,6 +50,7 @@ def test_trocas_de_job_defasadas_e_cada_job_dentro_de_6_h():
 
 
 def test_plano_da_rodada():
+    assert C.plano(C.LIBERAR - dt.timedelta(days=3))["acao"] == "nada"  # cedo demais até para esperar
     assert C.plano(C.LIBERAR - dt.timedelta(hours=8))["acao"] == "esperar"
     p = C.plano(C.LIBERAR - dt.timedelta(hours=2))
     assert (p["acao"], p["espera"]) == ("coletar", 7200)

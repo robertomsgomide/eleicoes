@@ -55,7 +55,9 @@ sem depender de nenhum computador ligado:
   ramos em `dados/bruto/ao_vivo/ele2026-6258` e faz o commit no `main`.
 
 Para ver a coleta funcionando antes: um push no ramo `ensaio-apuracao` (ou "Run workflow" com "ensaio") roda o mesmo
-esquema por 30 min contra os arquivos do 1º turno, com trocas de job a cada 12 min. Como funciona por dentro:
+esquema por 30 min contra os arquivos do 1º turno, com trocas de job a cada 12 min. "Run workflow" sem "ensaio" liga a
+coleta de verdade, se faltar menos de 24 h para as 15h30 de 25/10 (antes disso, não faz nada). Para parar tudo: na aba
+Actions, "Apuração ao vivo" → "Disable workflow" e cancelar a rodada em curso. Como funciona por dentro:
 [src/eleicoes/ao_vivo/coletor.py](src/eleicoes/ao_vivo/coletor.py).
 
 Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada hora, até as 17h de 25/10, o GitHub

@@ -12,7 +12,8 @@
 # 10 min em 25/10, das 10h03 às 6h53 do dia seguinte (horário de Brasília); basta uma. A primeira espera até as 15h30 e
 # libera os coletores; as seguintes ficam na fila (concurrency) e só começam quando a anterior acabar: se ela cair
 # antes do fim da apuração, a da fila retoma a coleta de onde os ramos pararam; se não, vê que já foi juntado e sai.
-# "Run workflow" também liga, a qualquer hora antes: mais de 5h45 antes das 15h30, a rodada espera e dispara a si mesma.
+# "Run workflow" também liga, nas 24 h antes das 15h30 de 25/10: se faltar mais de 5h45, a rodada espera e dispara a si
+# mesma (antes dessas 24 h, não faz nada). Para parar tudo: "Disable workflow" na aba Actions e cancelar a rodada.
 #
 # Ensaio: um push no ramo ensaio-apuracao (ou "Run workflow" com "ensaio") roda 30 min, com trocas de job a cada 12 min,
 # contra os arquivos do 1º turno, gravando nos ramos ensaio-a, -b, -c e juntando no ramo ensaio-juntado.

@@ -47,6 +47,7 @@ PERIODO = 340                                    # min entre duas trocas de job 
 EPOCA = AV.inicio - dt.timedelta(minutes=40)     # troca do coletor a às 16h20; as do b e do c, 1h53 e 3h47 depois
 LIBERAR = AV.inicio - dt.timedelta(minutes=90)   # os coletores começam às 15h30
 ESPERA_MAXIMA = 345                              # min que a rodada do workflow espera antes de disparar a si mesma
+ARMAR = dt.timedelta(hours=24)                   # antes disso, ligar o workflow não faz nada (não fica dias esperando)
 FIM_MAXIMO = AV.inicio + dt.timedelta(hours=13)  # a coleta vai no máximo até as 6h do dia seguinte
 MARGEM_FIM = dt.timedelta(hours=1)               # e continua 1 h depois de o TSE fechar a totalização
 ANTECEDENCIA = dt.timedelta(minutes=5)           # um job nunca termina a menos disso de quando começou
@@ -73,14 +74,15 @@ def plano(agora, ensaio=False, juntado=False, juntar=False):
     """O que a rodada do workflow faz: {"acao", "espera" (s), "epoca", "periodo" (min), "fim"}.
 
     acao: "coletar" (depois de esperar `espera`, os três coletores começam), "esperar" (cedo demais: espera e dispara o
-    workflow de novo), "juntar" (a coleta acabou: só junta o que foi gravado) ou "nada" (já foi juntado).
+    workflow de novo), "juntar" (a coleta acabou: só junta o que foi gravado) ou "nada" (já foi juntado, ou faltam
+    mais de 24 h para os coletores começarem).
     """
     p = {"acao": "coletar", "espera": 0, "epoca": EPOCA, "periodo": PERIODO, "fim": FIM_MAXIMO}
     if ensaio:
         return {**p, "epoca": agora, "periodo": ENSAIO["periodo"], "fim": agora + ENSAIO["duracao"]}
     if juntar:
         return {**p, "acao": "juntar"}
-    if juntado:
+    if juntado or LIBERAR - agora > ARMAR:
         return {**p, "acao": "nada"}
     if agora >= FIM_MAXIMO:
         return {**p, "acao": "juntar"}
