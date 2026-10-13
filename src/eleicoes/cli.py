@@ -41,6 +41,24 @@ def main(argv=None):
 
     sub.add_parser("historico", help="reconstrói a apuração (estimada) da eleição ao vivo e gera CSV + PNG")
 
+    co = sub.add_parser("coletar", help="coleta da apuração na nuvem (GitHub Actions): um dos três coletores")
+    co.add_argument("coletor", nargs="?", choices=list("abc"))
+    co.add_argument("--plano", action="store_true", help="só diz o que a rodada do workflow faz agora (chave=valor)")
+    co.add_argument("--pasta", help="pasta do ramo onde o coletor grava (padrão: dados/cache/ao_vivo/<eleição>/ramo-<coletor>)")
+    co.add_argument("--ramo", help="ramo do git para onde enviar; sem ele, só grava na pasta")
+    co.add_argument("--job", help="nome do job: a pasta das gravações dele dentro do ramo")
+    co.add_argument("--epoca", help="uma troca de job do coletor a (ISO; padrão: 40 min antes da divulgação)")
+    co.add_argument("--periodo", type=int, help="minutos entre duas trocas de job de um coletor")
+    co.add_argument("--fim", help="até quando coletar, no máximo (ISO)")
+    co.add_argument("--ensaio", action="store_true", help="ensaio curto: trocas de job a cada 12 min, por 30 min")
+    co.add_argument("--juntar", action="store_true", help="com --plano: só juntar o que já foi gravado")
+
+    ju = sub.add_parser("juntar", help="junta o que os coletores gravaram em dados/bruto/ao_vivo/<eleição>")
+    ju.add_argument("pastas", nargs="+", help="pastas dos ramos dos coletores")
+    ju.add_argument("--destino", help="outra pasta de saída (o ensaio não grava em dados/bruto)")
+    ju.add_argument("--forcar", action="store_true", help="junta antes do fim da apuração ou refaz uma junção")
+    ju.add_argument("--ensaio", action="store_true", help="ensaio: junta sem esperar o fim e exige --destino")
+
     a = p.parse_args(argv)
     try:
         if a.comando == "baixar":
@@ -70,6 +88,20 @@ def main(argv=None):
         elif a.comando == "historico":
             from eleicoes.ao_vivo import historico
             historico.main()
+        elif a.comando == "coletar":
+            from eleicoes.ao_vivo import coletor
+            if a.plano:
+                coletor.imprimir_plano(ensaio=a.ensaio, juntar=a.juntar)
+            elif a.coletor is None:
+                p.error("coletar: diga qual coletor (a, b ou c), ou --plano")
+            else:
+                pasta = a.pasta or coletor.AV.cache / f"ramo-{a.coletor}"
+                raise SystemExit(coletor.main(a.coletor, pasta, a.ramo, a.job, a.epoca, a.periodo, a.fim, a.ensaio))
+        elif a.comando == "juntar":
+            from eleicoes.ao_vivo import juntar
+            if a.ensaio and not a.destino:
+                p.error("juntar --ensaio: diga onde gravar com --destino")
+            raise SystemExit(juntar.juntar(a.pastas, a.destino, forcar=a.forcar, ensaio=a.ensaio))
     except KeyboardInterrupt:
         raise SystemExit(1)
 

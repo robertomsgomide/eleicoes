@@ -3,3 +3,4 @@
 *.png binary
 *.zip binary
 *.parquet binary
+*.gz binary

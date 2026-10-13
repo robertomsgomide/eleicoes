@@ -24,7 +24,7 @@ localhost; depois, publicação para o público geral sem depender de um PC liga
 | 3 | Pesquisas ✅ (05/10) | Base de pesquisas dos três anos (Wikipedia em português, revisão guardada, conferida com o registro do TSE); tendência × resultado; erro por instituto; erro das médias em Comparações (`uv run eleicoes pesquisas`) | 100% ligadas ao registro em 2018 e no 1º turno de 2022; ~95% no 2º turno de 2022; ~88% em 2026 (a Futura não aparece no registro nacional de 2026). Lista em [qualidade_pesquisas.md](qualidade_pesquisas.md) |
 | 4 | Mapa de pontos ✅ (05/10; 2º turno de 2026 depois do dia 25) | Seção "Mapa" em cada ano: pontos (WebGL; 1 ponto = 500 votos no país até 1 voto na rua), hexágonos de vantagem, busca de município, nome e votos de cada local ao passar o mouse; gráfico do voto por local e comparação entre os anos. Coordenadas completadas com 2016–2026 e validadas (`docs/qualidade_dados.md`) | 2018 e 2022 nos dois turnos, 2026 no 1º |
 | 5 | Projeção do 2º turno 2026 ✅ (07/10; refeita sozinha a cada pesquisa nova até 25/10) | Total do país: ponto de partida (1º turno das urnas + divisão dos outros candidatos nas pesquisas que perguntaram os dois turnos) combinado com a tendência das pesquisas feitas depois do 1º turno, com incerteza e chance de vitória; distribuição seção a seção para regiões e UFs. Seção "Projeção do 2º turno" em 2026 e na Metodologia; tendência das pesquisas de 2º turno recomeça depois do 1º turno (`uv run eleicoes projecao`). Pesquisas e projeção atualizadas a cada hora, com conferência antes de publicar (`uv run eleicoes atualizar`, no GitHub Actions) | Refeita dia a dia em 2018 e 2022: erro médio de 1,0 e 1,6 p.p., na véspera −0,05 e +0,8 p.p., urnas na faixa de 80% em todos os dias ([validacao_projecao.md](validacao_projecao.md)) |
-| 6 | Forecast dinâmico da apuração | Painel ao vivo novo: grava cada atualização oficial (Brasil e UFs) e prevê a evolução da curva a partir do estado atual. Base: `modelos.projecao.distribuir` dá o resultado esperado de cada seção para qualquer total do país | Ensaio completo com a noite de 2022; no ar em 25/10 às 17h |
+| 6 | Forecast dinâmico da apuração (coleta na nuvem ✅ 13/10) | Painel ao vivo novo: grava cada atualização oficial (Brasil e UFs) e prevê a evolução da curva a partir do estado atual. Base: `modelos.projecao.distribuir` dá o resultado esperado de cada seção para qualquer total do país. A gravação roda no GitHub Actions, com três coletores (`.github/workflows/apuracao.yml`; decisões abaixo) | Ensaio completo com a noite de 2022; no ar em 25/10 às 17h |
 | 7 | Depois de 25/10 | 2º turno de 2026 com os boletins do TSE; aba de comparações; Censo 2022 | — |
 | 8 | Publicação ✅ (08/10; a parte ao vivo fica com a Etapa 6) | Site no GitHub Pages ([robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)), publicado a cada envio para o `main`; `atualizar` a cada hora no GitHub Actions, com os dados que ele usa no ramo `dados` (`.github/workflows/site.yml`) | Site no ar e a rodada automática conferida no GitHub |
 
@@ -64,6 +64,28 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
 - **A noite de 25/10** não depende da hospedagem: o TSE deixa o navegador ler o placar direto (CORS liberado,
   conferido em 07/10). A curva e o forecast precisam de quem grave cada atualização: um job longo do GitHub Actions
   (até 6 horas) ou, se ele se mostrar frágil no ensaio com 2022, um Worker do Cloudflare (Etapa 6).
+
+## Coleta da noite de 25/10: decisões (13/10/2026)
+
+- **GitHub Actions, não Worker do Cloudflare**: grátis com o repositório público, sem conta nova, com o mesmo Python
+  do painel local. O Worker exigiria reescrever a coleta em JavaScript e pagar o plano de US$ 5: o `-cs.json` de SP tem
+  6,3 MB (104 mil seções) e o plano gratuito dá 10 ms de CPU por execução. Conferido em 13/10: os runners do GitHub
+  leem `resultados.tse.jus.br` (todos 200, inclusive 20 leituras seguidas).
+- **Sem depender do cron para começar**: de 08 a 13/10, o cron "a cada hora" do `site.yml` rodou 21 vezes, com
+  intervalos de até 9,5 h. O `apuracao.yml` tem uma rodada agendada a cada 10 min no dia 25 (basta uma), e a que
+  começar cedo espera até as 15h30; as outras ficam na fila e só entram se ela cair antes do fim.
+- **Três coletores com atrasos simétricos**: leituras a cada 60 s defasadas de 20 s, e trocas de job (um job dura no
+  máximo 6 h) a cada 5h40 defasadas de 1h53, para um cobrir o outro. Cada um grava no seu ramo (`ao-vivo-a`, `-b`,
+  `-c`), só acrescentando arquivos, e envia a cada 3 min. Juntar é direto: cada leitura entra uma vez e, de cada
+  seção, fica a primeira vez que algum coletor a viu.
+- **O que se grava**: cada atualização do país, de cada UF e de cada município, e o horário de chegada de cada seção
+  como aparecia durante a apuração. No fim, o commit vai direto para o `main`, em `dados/bruto/ao_vivo/ele2026-6258`.
+- **Cuidados com o TSE**: o servidor responde 403 a `HEAD` (só `GET` funciona); um arquivo que dá erro só é pedido
+  de novo 10 min depois, porque o TSE bloqueia IPs que acumulam erros. Em 13/10, o `-cs.json` do 2º turno de Tocantins
+  dava 404 (todas as outras UFs saíram em 09/10): uma UF sem esse arquivo não derruba a rodada, e os municípios dela
+  são lidos pela configuração da eleição.
+- **Painel e forecast da noite** (resto da Etapa 6): leem o que os coletores gravam (`dados.json` de cada ramo,
+  igual ao do painel local). Onde servir o painel fica para outra sessão.
 
 ## O que os dados permitem (verificado em 05/10/2026; 2026 atualizado em 07/10)
 

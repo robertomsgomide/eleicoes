@@ -31,3 +31,19 @@ O que muda de uma rodada para outra (a revisão de 2026 guardada, o registro do 
 processadas de 2026 e `cache/atualizar.json`) passa pelo cache do Actions. Se o cache sumir, o comando refaz a
 revisão que está no site. Quando estes dados mudarem (depois do 2º turno, por exemplo), o ramo é refeito por
 inteiro, também com um commit só.
+
+## Na nuvem: a noite do 2º turno (ramos `ao-vivo-a`, `-b` e `-c`)
+
+Durante a apuração de 25/10, cada um dos três coletores (`.github/workflows/apuracao.yml`) grava no seu ramo, em
+pedaços que só se acrescentam (formato em `src/eleicoes/ao_vivo/coletor.py`), e mantém lá um `dados.json` igual ao do
+painel local. No fim, `uv run eleicoes juntar` junta os três em `bruto/ao_vivo/ele2026-6258/`, com um commit no `main`:
+
+- `leituras_oficiais.json`: cada atualização do total do país (o mesmo formato do 1º turno, com mais totais);
+- `leituras_ufs.json`: idem, de cada UF e do exterior;
+- `municipios.jsonl.gz`: cada atualização do resultado de cada município;
+- `secoes.csv.gz`: o horário de chegada de cada seção como o TSE mostrava na primeira vez que um coletor a viu (o TSE
+  reescreve esses horários depois da apuração);
+- `final/` e `historico_estimado.*`, como no 1º turno, e `coleta.json`, com os jobs de cada coletor.
+
+Depois de juntados, os ramos `ao-vivo-*` podem ser apagados. O ensaio (push no ramo `ensaio-apuracao`) grava nos
+ramos `ensaio-a`, `-b`, `-c` e junta no `ensaio-juntado`, que também podem ser apagados.
