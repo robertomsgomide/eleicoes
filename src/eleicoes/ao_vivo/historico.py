@@ -15,7 +15,7 @@ Uso:  uv run eleicoes historico     (pode rodar de novo durante a apuração;
                                      só baixa de novo o que mudou)
 A eleição acompanhada vem de [ao_vivo] em config/eleicoes.toml. Saídas em
 dados/processado/ao_vivo/<ciclo>-<eleicao>/historico_estimado.{csv,png}.
-O painel ao vivo (servidor.py) importa este módulo.
+O painel ao vivo (servidor.py) e a coleta na nuvem (coletor.py e juntar.py) importam este módulo.
 """
 import collections
 import concurrent.futures as cf
@@ -34,11 +34,25 @@ AV = config.ao_vivo()
 CICLO, PLEITO, ELEICAO, CARGO = AV.ciclo, AV.pleito, AV.eleicao, AV.cargo
 INICIO_DIVULGACAO = AV.inicio  # horário de Brasília
 BASE = "https://resultados.tse.jus.br/oficial"
-URL_BR = f"{BASE}/{CICLO}/{ELEICAO}/dados/br/br-c{CARGO}-e{ELEICAO.zfill(6)}-u.json"
+
+
+def url_resultado(abr):
+    """Arquivo de resultado do país ("br"), de uma UF ("sp", "zz" para o exterior) ou de um município ("sp71072")."""
+    return f"{BASE}/{CICLO}/{ELEICAO}/dados/{abr[:2]}/{abr}-c{CARGO}-e{ELEICAO.zfill(6)}-u.json"
+
+
+def url_secoes(uf):
+    """Configuração das seções da UF, com o horário em que o boletim de cada uma chegou ao TSE."""
+    return f"{BASE}/{CICLO}/arquivo-urna/{PLEITO}/config/{uf}/{uf}-p{PLEITO.zfill(6)}-cs.json"
+
+
+URL_BR = url_resultado("br")
+URL_MUNICIPIOS = f"{BASE}/{CICLO}/{ELEICAO}/config/mun-e{ELEICAO.zfill(6)}-cm.json"
 CACHE = AV.cache
 SAIDA_CSV = AV.processado / "historico_estimado.csv"
 SAIDA_PNG = AV.processado / "historico_estimado.png"
 PARALELO = 8
+ESPERA_ERRO = 600  # s até tentar de novo um arquivo que deu erro (em 13/10, o -cs.json do 2º turno de TO dava 404)
 
 REGIOES = {r: [uf.lower() for uf in ufs] for r, ufs in config.REGIOES.items()}  # o site do TSE usa minúsculas
 REGIAO_DA_UF = {uf: r for r, ufs in REGIOES.items() for uf in ufs}
@@ -59,9 +73,12 @@ def baixar(url, etag=None, tentativas=4):
                     corpo = gzip.decompress(corpo)
                 return json.loads(corpo.decode("utf-8")), r.headers.get("ETag")
         except urllib.error.HTTPError as e:
+            e.close()  # a resposta de erro fica aberta se ninguém fechar
             if e.code == 304:
                 return None, etag
-            if e.code == 404:  # o TSE bloqueia IPs que acumulam 404: não insiste
+            # arquivo que não existe (o TSE responde 403 ou 404) ou IP bloqueado: o TSE bloqueia IPs que acumulam
+            # erros, então não insiste
+            if e.code in (403, 404):
                 raise
             erro = e
         except Exception as e:  # timeout, conexão caiu etc.
@@ -73,6 +90,10 @@ def baixar(url, etag=None, tentativas=4):
 # ---- Leitura dos arquivos do TSE -------------------------------------------
 _cs = {}       # uf -> (etag, seções já processadas)
 _horas = {}    # "dd/mm/aaaa hh:mm" -> datetime (evita milhares de strptime iguais)
+_chegadas = {}  # uf -> [(município, zona, seção, "dd/mm/aaaa hh:mm:ss")] da versão do -cs.json lida nesta rodada
+_erro_cs = {}  # uf -> quando o -cs.json dela deu erro pela última vez
+_municipios = None  # uf -> códigos dos municípios (configuração da eleição), para UFs sem o -cs.json
+_erro_municipios = 0.0  # quando a configuração dos municípios deu erro pela última vez
 
 
 def secoes_da_uf(uf):
@@ -80,13 +101,13 @@ def secoes_da_uf(uf):
 
     Seções agregadas (campo "nsp") ficam de fora: votam na urna da seção
     principal e não têm boletim próprio, como no total "ts" do TSE.
+    Quando o arquivo mudou, o horário de cada seção recebida fica em _chegadas (coletar devolve).
     """
-    url = f"{BASE}/{CICLO}/arquivo-urna/{PLEITO}/config/{uf}/{uf}-p{PLEITO.zfill(6)}-cs.json"
     etag, antigo = _cs.get(uf, (None, None))
-    d, etag = baixar(url, etag if antigo else None)
+    d, etag = baixar(url_secoes(uf), etag if antigo else None)
     if d is None:
         return antigo
-    out = {}
+    out, chegadas = {}, []
     for abr in d["abr"]:
         for mu in abr["mu"]:
             item = out.setdefault(mu["cd"], [0, collections.Counter()])
@@ -101,14 +122,41 @@ def secoes_da_uf(uf):
                         if h is None:
                             h = _horas[chave] = dt.datetime.strptime(chave, "%d/%m/%Y %H:%M")
                         item[1][h] += 1
+                        chegadas.append((mu["cd"], zona["cd"], s["ns"], f'{s["da"]} {s["ha"]}'))
     _cs[uf] = (etag, out)
+    _chegadas[uf] = chegadas
     return out
+
+
+def _secoes_ou_ultimas(uf):
+    """(seções, erro): uma UF cujo -cs.json falha não derruba a rodada. Fica com a última versão lida (ou nenhuma) e
+    só tenta de novo depois de ESPERA_ERRO, porque o TSE bloqueia IPs que acumulam erros."""
+    if time.time() - _erro_cs.get(uf, 0) < ESPERA_ERRO:
+        return _cs.get(uf, (None, {}))[1], None
+    try:
+        return secoes_da_uf(uf), None
+    except Exception as e:
+        _erro_cs[uf] = time.time()
+        return _cs.get(uf, (None, {}))[1], e
+
+
+def municipios_da_eleicao():
+    """{uf: [códigos dos municípios]} da configuração da eleição; {} se não deu para ler (tenta de novo depois de
+    ESPERA_ERRO)."""
+    global _municipios, _erro_municipios
+    if _municipios is None and time.time() - _erro_municipios >= ESPERA_ERRO:
+        try:
+            d, _ = baixar(URL_MUNICIPIOS)
+            _municipios = {a["cd"].lower(): [m["cd"] for m in a["mu"]] for a in d["abr"]}
+        except Exception:
+            _erro_municipios = time.time()
+    return _municipios or {}
 
 
 def resumo_resultado(d):
     s = d.get("s", {})
     return {"st": int(num(s.get("st"))), "ts": int(num(s.get("ts"))), "and": d.get("and", ""),
-            "vv": num(d.get("v", {}).get("vv")), "cand": candidatos(d)}
+            "vv": num(d.get("v", {}).get("vv")), "cand": candidatos(d), "dt": d.get("dt", ""), "ht": d.get("ht", "")}
 
 
 # ---- Coleta -----------------------------------------------------------------
@@ -116,11 +164,17 @@ _mun = None  # (uf, municipio) -> resumo do resultado municipal (espelho de cach
 _lido = {}   # (uf, municipio) -> momento da última leitura nesta execução
 
 
+def iniciar_municipios(resumos):
+    """Começa dos resultados municipais já conhecidos ({(uf, municipio): resumo}), em vez do cache deste computador:
+    a coleta na nuvem retoma o que o job anterior gravou."""
+    global _mun
+    _mun = dict(resumos)
+
+
 def _resultado_municipio(uf, mu):
     antigo = _mun.get((uf, mu))
-    d, etag = baixar(f"{BASE}/{CICLO}/{ELEICAO}/dados/{uf}/{uf}{mu}-c{CARGO}-e{ELEICAO.zfill(6)}-u.json",
-                     antigo and antigo.get("etag"))
-    _lido[(uf, mu)] = time.time()
+    _lido[(uf, mu)] = time.time()  # antes de baixar: um erro também espera a revisita para tentar de novo
+    d, etag = baixar(url_resultado(uf + mu), antigo and antigo.get("etag"))
     if d is None:  # o TSE ainda não publicou versão nova deste município
         return antigo
     r = resumo_resultado(d)
@@ -132,11 +186,14 @@ def _resultado_municipio(uf, mu):
 def coletar(limite=None, folga=0.0, revisita=0, log=print):
     """Baixa horários das seções, resultados municipais que ficaram para trás e o arquivo nacional.
 
-    limite:   máximo de municípios baixados nesta rodada (None = todos os pendentes).
+    limite:   máximo de municípios baixados nesta rodada (None = todos os pendentes; 0 = nenhum).
     folga:    só baixa de novo um município se ele recebeu pelo menos essa fração
               a mais de seções desde a última leitura (0 = qualquer seção nova).
     revisita: segundos mínimos entre duas leituras do mesmo município (o TSE
               publica os resultados em rajadas, bem depois de os boletins chegarem).
+    Além do que reconstruir() usa, devolve "chegadas" (o horário de cada seção recebida, das UFs cujo -cs.json mudou
+    nesta rodada), "mun_novos" (os municípios com resultado novo nesta rodada) e "erros_secoes" (UF -> erro).
+    Os municípios de uma UF sem -cs.json são lidos assim mesmo, por último, a cada 5 min no máximo.
     """
     global _mun
     (CACHE / "mun").mkdir(parents=True, exist_ok=True)
@@ -145,9 +202,17 @@ def coletar(limite=None, folga=0.0, revisita=0, log=print):
                 for a in (CACHE / "mun").glob("*.json")}
 
     with cf.ThreadPoolExecutor(PARALELO) as ex:
-        secoes = dict(zip(UFS, ex.map(secoes_da_uf, UFS)))
+        lidas = dict(zip(UFS, ex.map(_secoes_ou_ultimas, UFS)))
+    secoes = {uf: s for uf, (s, _) in lidas.items()}
+    erros = {uf: str(e) or e.__class__.__name__ for uf, (_, e) in lidas.items() if e}
 
     pendentes, atrasados, agora = [], 0, time.time()
+    if limite != 0 and any(not s for s in secoes.values()):
+        for uf, municipios in municipios_da_eleicao().items():
+            if not secoes.get(uf):
+                pendentes += [(-1.0, uf, mu) for mu in municipios
+                              if (_mun.get((uf, mu)) or {}).get("and") != "f"
+                              and agora - _lido.get((uf, mu), 0) >= max(revisita, 300)]
     for uf, municipios in secoes.items():
         for mu, (total, chegadas) in municipios.items():
             recebidas = sum(chegadas.values())
@@ -155,29 +220,35 @@ def coletar(limite=None, folga=0.0, revisita=0, log=print):
                 continue
             r = _mun.get((uf, mu))
             if r is None:
-                pendentes.append((float("inf"), uf, mu))
+                if agora - _lido.get((uf, mu), 0) >= revisita:
+                    pendentes.append((float("inf"), uf, mu))
             elif r["and"] != "f" and recebidas > r["st"]:
                 atrasados += 1
                 falta = recebidas - r["st"]
                 if (falta >= folga * r["st"] or recebidas == total) and agora - _lido.get((uf, mu), 0) >= revisita:
                     pendentes.append((falta / max(r["st"], 1), uf, mu))
     pendentes.sort(reverse=True)
-    lote = pendentes[:limite] if limite else pendentes
+    lote = pendentes[:limite] if limite is not None else pendentes
 
-    falhas = 0
+    falhas, novos = 0, []
     if lote:
         log(f"     baixando {len(lote)} resultados municipais…")
     with cf.ThreadPoolExecutor(PARALELO) as ex:
         futs = {ex.submit(_resultado_municipio, uf, mu): (uf, mu) for _, uf, mu in lote}
         for f in cf.as_completed(futs):
             try:
-                _mun[futs[f]] = f.result()
+                r = f.result()
             except Exception:
                 falhas += 1
+                continue
+            if r is not _mun.get(futs[f]):  # o mesmo objeto: o TSE não publicou versão nova
+                novos.append(futs[f])
+            _mun[futs[f]] = r
 
     br, _ = baixar(URL_BR)
+    chegadas = {uf: _chegadas.pop(uf) for uf in list(_chegadas)}
     return {"secoes": secoes, "mun": _mun, "br": br, "baixados": len(lote) - falhas,
-            "falhas": falhas, "atrasados": atrasados}
+            "falhas": falhas, "atrasados": atrasados, "chegadas": chegadas, "mun_novos": novos, "erros_secoes": erros}
 
 
 # ---- Reconstrução -----------------------------------------------------------
@@ -257,18 +328,7 @@ def main():
     s = reconstruir(c)
     print(f"     {s['total_secoes']:,} seções, {s['recebidas'][-1]:,} com boletim recebido "
           f"(arquivo nacional do TSE: {s['oficial']['ts']:,} seções)".replace(",", "."))
-
-    SAIDA_CSV.parent.mkdir(parents=True, exist_ok=True)
-    with open(SAIDA_CSV, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.writer(f, delimiter=";")
-        w.writerow(["horario", "boletins_recebidos", *[f"pct_recebidos_{r}" for r in s["secoes"]],
-                    *[x for cand in s["cand"] for x in (f"votos_estimados_{cand['n']}_{cand['nome']}",
-                                                         f"pct_validos_estimado_{cand['n']}_{cand['nome']}")]])
-        br_num = lambda v: "" if v is None else f"{v:.3f}".replace(".", ",")
-        for i, t in enumerate(s["t"]):
-            w.writerow([t.strftime("%d/%m/%Y %H:%M"), s["recebidas"][i],
-                        *[br_num(s["secoes"][r][i]) for r in s["secoes"]],
-                        *[x for cand in s["cand"] for x in (cand["votos"][i], br_num(cand["pct"][i]))]])
+    gravar_csv(s)
 
     # conferência: a reconstrução no horário do arquivo nacional contra o total oficial dele
     of = s["oficial"]
@@ -283,7 +343,21 @@ def main():
     print(f"\nPronto: {SAIDA_PNG.relative_to(config.RAIZ)} e {SAIDA_CSV.relative_to(config.RAIZ)}")
 
 
-def plotar(s, h_of):
+def gravar_csv(s, arq=SAIDA_CSV):
+    arq.parent.mkdir(parents=True, exist_ok=True)
+    with open(arq, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(["horario", "boletins_recebidos", *[f"pct_recebidos_{r}" for r in s["secoes"]],
+                    *[x for cand in s["cand"] for x in (f"votos_estimados_{cand['n']}_{cand['nome']}",
+                                                         f"pct_validos_estimado_{cand['n']}_{cand['nome']}")]])
+        br_num = lambda v: "" if v is None else f"{v:.3f}".replace(".", ",")  # noqa: E731
+        for i, t in enumerate(s["t"]):
+            w.writerow([t.strftime("%d/%m/%Y %H:%M"), s["recebidas"][i],
+                        *[br_num(s["secoes"][r][i]) for r in s["secoes"]],
+                        *[x for cand in s["cand"] for x in (cand["votos"][i], br_num(cand["pct"][i]))]])
+
+
+def plotar(s, h_of, arq=SAIDA_PNG):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.dates as mdates
@@ -360,4 +434,5 @@ def plotar(s, h_of):
              f"{h_of:%d/%m/%Y %H:%M:%S} · {s['total_secoes']:,} seções".replace(",", "."),
              fontsize=8, color=INK3)
     fig.subplots_adjust(left=0.08, right=0.82, top=0.93, bottom=0.08)
-    fig.savefig(SAIDA_PNG, dpi=150, facecolor=SURF)
+    fig.savefig(arq, dpi=150, facecolor=SURF)
+    plt.close(fig)

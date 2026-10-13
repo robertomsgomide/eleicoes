@@ -3,8 +3,7 @@
 #
 # Códigos do TSE: "pleito" e "eleicao" identificam cada turno nos arquivos do TSE.
 # Os que faltam são preenchidos na Etapa 1, lidos dos próprios arquivos do TSE;
-# o pleito do 2º turno de 2026 só aparece em resultados.tse.jus.br/oficial/comum/config/ele-c.json
-# perto da data.
+# os do 2º turno de 2026 vêm de resultados.tse.jus.br/oficial/comum/config/ele-c.json (lá desde antes de 13/10).
 #
 # "nas_pesquisas": como o candidato aparece nas tabelas de pesquisas da Wikipedia (início do nome na coluna ou
 # o nome entre parênteses na célula). Em 2026, "Bolsonaro" sozinho é Jair, que não é candidato: o campo é "Flávio".
@@ -39,14 +38,14 @@ bolsonarismo = { numero = 22, nome = "Jair Bolsonaro", partido = "PL", nas_pesqu
 # 2026, 1º turno: Leonardo Alves de Araújo (28), 5.246 votos ("vnt" no resultado final do site de resultados).
 [eleicoes.2026]
 turno1 = { data = "2026-10-04", divulgacao = "17:00", pleito = "3220", eleicao = "6257", nulos_tecnicos = [28] }
-turno2 = { data = "2026-10-25", divulgacao = "17:00", eleicao = "6258" }
+turno2 = { data = "2026-10-25", divulgacao = "17:00", pleito = "3221", eleicao = "6258" }
 petismo = { numero = 13, nome = "Lula", partido = "PT", nas_pesquisas = "Lula" }
 bolsonarismo = { numero = 22, nome = "Flávio Bolsonaro", partido = "PL", nas_pesquisas = "Flávio" }
 
-# Eleição acompanhada pelo painel ao vivo (uv run eleicoes ao-vivo).
-# Para o 2º turno de 2026: turno = 2, depois de preencher o pleito acima.
+# Eleição acompanhada ao vivo: pelo painel no computador (uv run eleicoes ao-vivo) e pela coleta na nuvem
+# (uv run eleicoes coletar, no GitHub Actions). A variável de ambiente ELEICOES_TURNO_AO_VIVO troca o turno (ensaios).
 [ao_vivo]
 ano = 2026
-turno = 1
+turno = 2
 cargo = "0001"
 porta = 8765

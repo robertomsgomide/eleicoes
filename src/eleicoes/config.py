@@ -2,6 +2,7 @@
 import dataclasses
 import datetime as dt
 import functools
+import os
 import pathlib
 import tomllib
 
@@ -97,8 +98,12 @@ class AoVivo:
 
 
 def ao_vivo():
+    """[ao_vivo] de config/eleicoes.toml; a variável de ambiente ELEICOES_TURNO_AO_VIVO troca o turno (num ensaio da coleta
+    com os arquivos do 1º turno, por exemplo)."""
     c = carregar()
-    a = c["ao_vivo"]
+    a = dict(c["ao_vivo"])
+    if os.environ.get("ELEICOES_TURNO_AO_VIVO"):
+        a["turno"] = int(os.environ["ELEICOES_TURNO_AO_VIVO"])
     t = c["eleicoes"][str(a["ano"])][f"turno{a['turno']}"]
     faltam = [k for k in ("pleito", "eleicao") if not t.get(k)]
     if faltam:

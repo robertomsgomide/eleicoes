@@ -1,0 +1,72 @@
+# Um job de um dos três coletores da apuração ao vivo, chamado pelo apuracao.yml: lê o TSE e grava no ramo do coletor
+# (ao-vivo-a, -b ou -c) até a próxima troca de job dele ou o fim da apuração (src/eleicoes/ao_vivo/coletor.py).
+name: Coletor
+
+on:
+  workflow_call:
+    inputs:
+      coletor:
+        description: "a, b ou c"
+        type: string
+        required: true
+      ordem:
+        description: "qual job deste coletor nesta rodada do workflow (1 a 5)"
+        type: number
+        required: true
+      plano:
+        description: "as saídas do job plano do apuracao.yml, em JSON"
+        type: string
+        required: true
+
+jobs:
+  coletar:
+    runs-on: ubuntu-24.04  # fixo até a eleição: o ubuntu-latest passa ao Ubuntu 26 a partir de 19/10
+    timeout-minutes: 358   # o GitHub encerra um job em 6 h; o coletor sai antes, na troca de job dele
+    permissions:
+      contents: write      # envia para o ramo do coletor
+    env:
+      TZ: America/Sao_Paulo
+      ELEICOES_TURNO_AO_VIVO: ${{ fromJSON(inputs.plano).turno }}
+      RAMO: ${{ fromJSON(inputs.plano).prefixo }}-${{ inputs.coletor }}
+      JOB: ${{ github.run_id }}.${{ github.run_attempt }}-${{ inputs.ordem }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Ramo do coletor
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads origin "$RAMO" > /dev/null; then
+            git clone -q --depth 1 --branch "$RAMO" "$url" "$RUNNER_TEMP/ramo"
+          else
+            git init -q -b "$RAMO" "$RUNNER_TEMP/ramo"
+            cd "$RUNNER_TEMP/ramo"
+            git remote add origin "$url"
+            echo "Gravações do coletor ${{ inputs.coletor }} da apuração ao vivo (src/eleicoes/ao_vivo/coletor.py, no main)." > README.md
+            git add README.md
+            git commit -qm "Ramo do coletor ${{ inputs.coletor }}"
+            git push -q origin "$RAMO"
+          fi
+
+      - uses: astral-sh/setup-uv@v10.2.0  # o setup-uv não publica a etiqueta curta (v10)
+        with:
+          enable-cache: true
+
+      - name: Coleta
+        run: >-
+          uv run --frozen --no-dev eleicoes coletar ${{ inputs.coletor }}
+          --pasta "$RUNNER_TEMP/ramo" --ramo "$RAMO" --job "$JOB"
+          --epoca "${{ fromJSON(inputs.plano).epoca }}" --periodo "${{ fromJSON(inputs.plano).periodo }}"
+          --fim "${{ fromJSON(inputs.plano).fim }}" ${{ fromJSON(inputs.plano).ensaio == 'true' && '--ensaio' || '' }}
+
+      # se a coleta caiu no meio, o que ela gravou desde o último envio não se perde
+      - name: Envia o que ficou
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/ramo" 2> /dev/null || exit 0
+          git add -A
+          git diff --cached --quiet || git commit -qm "Coletor ${{ inputs.coletor }}: o que ficou do job $JOB"
+          git push -q origin "HEAD:$RAMO" || { git pull -q --rebase origin "$RAMO" && git push -q origin "HEAD:$RAMO"; }

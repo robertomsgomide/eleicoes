@@ -1,0 +1,276 @@
+# A apuração do 2º turno gravada na nuvem, sem depender de nenhum computador ligado (uv run eleicoes coletar;
+# o que se grava e por quê: src/eleicoes/ao_vivo/coletor.py).
+#
+# Três coletores (a, b, c) leem o TSE ao mesmo tempo, a cada 60 s e defasados de 20 s entre si. Um job do Actions dura
+# no máximo 6 h, então cada coletor é uma corrente de jobs (coletor.yml) que passa a vez nas suas trocas, a cada 5h40;
+# as trocas dos três ficam defasadas de 1h53 (a às 16h20, b às 18h13, c às 20h07, e assim por diante): enquanto um
+# troca de job, os outros dois seguem lendo. Cada coletor grava no seu ramo (ao-vivo-a, -b, -c) e envia a cada 3 min.
+# Os coletores param 1 h depois de o TSE fechar a totalização (ou às 6h de 26/10); aí o job "juntar" junta os três
+# ramos em dados/bruto/ao_vivo/ele2026-6258 e faz o commit no main.
+#
+# Quem liga: o GitHub pula muitas rodadas agendadas (no site.yml, de 08 a 13/10, só 21 das ~115), então há uma a cada
+# 10 min em 25/10, das 10h03 às 6h53 do dia seguinte (horário de Brasília); basta uma. A primeira espera até as 15h30 e
+# libera os coletores; as seguintes ficam na fila (concurrency) e só começam quando a anterior acabar: se ela cair
+# antes do fim da apuração, a da fila retoma a coleta de onde os ramos pararam; se não, vê que já foi juntado e sai.
+# "Run workflow" também liga, nas 24 h antes das 15h30 de 25/10: se faltar mais de 5h45, a rodada espera e dispara a si
+# mesma (antes dessas 24 h, não faz nada). Para parar tudo: "Disable workflow" na aba Actions e cancelar a rodada.
+#
+# Ensaio: um push no ramo ensaio-apuracao (ou "Run workflow" com "ensaio") roda 30 min, com trocas de job a cada 12 min,
+# contra os arquivos do 1º turno, gravando nos ramos ensaio-a, -b, -c e juntando no ramo ensaio-juntado.
+name: Apuração ao vivo
+
+on:
+  schedule:
+    - cron: "3-59/10 13-23 25 10 *"  # 25/10, das 10h03 às 20h53 de Brasília
+    - cron: "3-59/10 0-9 26 10 *"    # das 21h03 de 25/10 às 6h53 de 26/10
+  push:
+    branches: [ensaio-apuracao]
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: "Ensaio de 30 min com os arquivos do 1º turno (ramos ensaio-*)"
+        type: boolean
+        default: false
+      juntar:
+        description: "Só juntar o que os coletores gravaram (refaz dados/bruto/ao_vivo/ele2026-6258)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: apuracao-${{ (github.event_name == 'push' || inputs.ensaio) && 'ensaio' || 'oficial' }}
+  cancel-in-progress: false
+
+env:
+  TZ: America/Sao_Paulo
+
+jobs:
+  plano:
+    name: Plano
+    runs-on: ubuntu-24.04  # fixo até a eleição: o ubuntu-latest passa ao Ubuntu 26 a partir de 19/10
+    timeout-minutes: 358   # espera até 5h45 pela hora de começar
+    permissions:
+      contents: read
+      actions: write       # cedo demais: dispara o workflow de novo
+    outputs:
+      acao: ${{ steps.plano.outputs.acao }}
+      epoca: ${{ steps.plano.outputs.epoca }}
+      periodo: ${{ steps.plano.outputs.periodo }}
+      fim: ${{ steps.plano.outputs.fim }}
+      ensaio: ${{ steps.plano.outputs.ensaio }}
+      turno: ${{ steps.plano.outputs.turno }}
+      prefixo: ${{ steps.plano.outputs.prefixo }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.2.0  # o setup-uv não publica a etiqueta curta (v10)
+        with:
+          enable-cache: true
+
+      - name: O que esta rodada faz
+        id: plano
+        env:
+          ENSAIO: ${{ (github.event_name == 'push' || inputs.ensaio) && '1' || '' }}
+          JUNTAR: ${{ inputs.juntar && '1' || '' }}
+          ELEICOES_TURNO_AO_VIVO: ${{ (github.event_name == 'push' || inputs.ensaio) && '1' || '' }}
+        run: uv run --frozen --no-dev eleicoes coletar --plano ${ENSAIO:+--ensaio} ${JUNTAR:+--juntar} | tee -a "$GITHUB_OUTPUT"
+
+      - name: Espera a hora de começar
+        if: steps.plano.outputs.espera != '0'
+        run: sleep "${{ steps.plano.outputs.espera }}"
+
+      - name: Cedo demais - dispara o workflow de novo
+        if: steps.plano.outputs.acao == 'esperar'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run apuracao.yml --ref "$GITHUB_REF_NAME"
+
+  # As três correntes de jobs, uma por coletor. Um job que falha não para a corrente (!cancelled()), e o seguinte
+  # retoma do ramo do coletor; os jobs que sobram depois do fim da apuração saem logo.
+  a1:
+    name: Coletor a · 1º job
+    needs: plano
+    if: needs.plano.outputs.acao == 'coletar'
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: a, ordem: 1, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  a2:
+    name: Coletor a · 2º job
+    needs: [plano, a1]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: a, ordem: 2, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  a3:
+    name: Coletor a · 3º job
+    needs: [plano, a2]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: a, ordem: 3, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  a4:
+    name: Coletor a · 4º job
+    needs: [plano, a3]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: a, ordem: 4, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  a5:
+    name: Coletor a · 5º job
+    needs: [plano, a4]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: a, ordem: 5, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  b1:
+    name: Coletor b · 1º job
+    needs: plano
+    if: needs.plano.outputs.acao == 'coletar'
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: b, ordem: 1, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  b2:
+    name: Coletor b · 2º job
+    needs: [plano, b1]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: b, ordem: 2, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  b3:
+    name: Coletor b · 3º job
+    needs: [plano, b2]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: b, ordem: 3, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  b4:
+    name: Coletor b · 4º job
+    needs: [plano, b3]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: b, ordem: 4, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  b5:
+    name: Coletor b · 5º job
+    needs: [plano, b4]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: b, ordem: 5, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  c1:
+    name: Coletor c · 1º job
+    needs: plano
+    if: needs.plano.outputs.acao == 'coletar'
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: c, ordem: 1, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  c2:
+    name: Coletor c · 2º job
+    needs: [plano, c1]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: c, ordem: 2, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  c3:
+    name: Coletor c · 3º job
+    needs: [plano, c2]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: c, ordem: 3, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  c4:
+    name: Coletor c · 4º job
+    needs: [plano, c3]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: c, ordem: 4, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  c5:
+    name: Coletor c · 5º job
+    needs: [plano, c4]
+    if: ${{ !cancelled() && needs.plano.outputs.acao == 'coletar' }}
+    permissions: {contents: write}
+    uses: ./.github/workflows/coletor.yml
+    with: {coletor: c, ordem: 5, plano: "${{ toJSON(needs.plano.outputs) }}"}
+
+  juntar:
+    name: Junta as gravações
+    needs: [plano, a5, b5, c5]
+    if: ${{ !cancelled() && (needs.plano.outputs.acao == 'coletar' || needs.plano.outputs.acao == 'juntar') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write  # o commit no main (no ensaio, o ramo ensaio-juntado)
+    env:
+      ELEICOES_TURNO_AO_VIVO: ${{ needs.plano.outputs.turno }}
+      PREFIXO: ${{ needs.plano.outputs.prefixo }}
+      ENSAIO: ${{ needs.plano.outputs.ensaio == 'true' && '1' || '' }}
+      FORCAR: ${{ inputs.juntar && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Ramos dos coletores
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for c in a b c; do
+            git clone -q --depth 1 --branch "$PREFIXO-$c" "$url" "$RUNNER_TEMP/ramo-$c" || echo "::warning::Sem o ramo $PREFIXO-$c"
+          done
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+
+      - name: Junta
+        id: juntar
+        run: |
+          args=("$RUNNER_TEMP/ramo-a" "$RUNNER_TEMP/ramo-b" "$RUNNER_TEMP/ramo-c")
+          if [ -n "$ENSAIO" ]; then args+=(--ensaio --destino "$RUNNER_TEMP/juntado/$GITHUB_RUN_ID"); fi
+          if [ -n "$FORCAR" ]; then args+=(--forcar); fi
+          set +e
+          uv run --frozen --no-dev eleicoes juntar "${args[@]}"
+          s=$?
+          echo "status=$s" >> "$GITHUB_OUTPUT"
+          [ $s -eq 0 ] || [ $s -eq 3 ]  # 3: a apuração não acabou; a próxima rodada do workflow retoma a coleta
+
+      - name: Commit no main
+        if: steps.juntar.outputs.status == '0' && env.ENSAIO == ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/bruto/ao_vivo
+          git commit -qm "Apuração do 2º turno gravada ao vivo na nuvem (coletores a, b e c)"
+          for i in 1 2 3 4 5; do git pull -q --rebase && git push -q && exit 0; sleep 15; done
+          exit 1
+
+      - name: Ensaio - envia para o ramo ensaio-juntado
+        if: steps.juntar.outputs.status == '0' && env.ENSAIO != ''
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          ramo="$RUNNER_TEMP/ensaio-juntado"
+          if ! git clone -q --depth 1 --branch ensaio-juntado "$url" "$ramo"; then
+            git init -q -b ensaio-juntado "$ramo"
+            git -C "$ramo" remote add origin "$url"
+          fi
+          cp -r "$RUNNER_TEMP/juntado/$GITHUB_RUN_ID" "$ramo/"
+          git -C "$ramo" add -A
+          git -C "$ramo" commit -qm "Ensaio da coleta: rodada $GITHUB_RUN_ID"
+          git -C "$ramo" push -q origin HEAD:ensaio-juntado

@@ -31,11 +31,34 @@ uv run eleicoes site             # dados do site -> site/src/data (JSON, version
 uv run eleicoes ao-vivo          # painel da apuração ao vivo em http://localhost:8765
 uv run eleicoes ao-vivo --publico   # idem, com link https temporário (precisa do cloudflared)
 uv run eleicoes historico        # reconstrução estimada da apuração ao vivo -> CSV + PNG
+uv run eleicoes coletar a        # um dos três coletores da apuração na nuvem (quem roda é o GitHub Actions; ver abaixo)
+uv run eleicoes juntar <ramos>   # junta o que os coletores gravaram em dados/bruto/ao_vivo/<eleição>
 uv run pytest                    # testes
 ```
 
-A eleição acompanhada pelo painel ao vivo é escolhida em `[ao_vivo]` no
+A eleição acompanhada ao vivo (pelo painel e pelos coletores) é escolhida em `[ao_vivo]` no
 [config/eleicoes.toml](config/eleicoes.toml).
+
+### A noite do 2º turno, gravada na nuvem
+
+Em 25/10, a apuração é gravada pelo GitHub Actions ([.github/workflows/apuracao.yml](.github/workflows/apuracao.yml)),
+sem depender de nenhum computador ligado:
+
+- três coletores (a, b, c) leem o TSE a cada 60 s, defasados de 20 s entre si. Cada um grava no seu ramo
+  (`ao-vivo-a`, `-b`, `-c`) e envia a cada 3 min o que o TSE não deixa baixar depois: cada atualização do país, de cada
+  UF e de cada município, e o horário de chegada de cada seção como aparecia durante a apuração;
+- um job do Actions dura no máximo 6 h, então cada coletor troca de job a cada 5h40, e as trocas dos três ficam
+  defasadas de 1h53: enquanto um troca, os outros dois seguem lendo;
+- o GitHub pula muitas rodadas agendadas, então há uma a cada 10 min no dia 25, a partir das 10h; a primeira espera
+  até as 15h30 e libera os coletores, e as seguintes só entram se ela cair antes do fim;
+- 1 h depois de o TSE fechar a totalização (ou às 6h de 26/10, no máximo), o job "Junta as gravações" junta os três
+  ramos em `dados/bruto/ao_vivo/ele2026-6258` e faz o commit no `main`.
+
+Para ver a coleta funcionando antes: um push no ramo `ensaio-apuracao` (ou "Run workflow" com "ensaio") roda o mesmo
+esquema por 30 min contra os arquivos do 1º turno, com trocas de job a cada 12 min. "Run workflow" sem "ensaio" liga a
+coleta de verdade, se faltar menos de 24 h para as 15h30 de 25/10 (antes disso, não faz nada). Para parar tudo: na aba
+Actions, "Apuração ao vivo" → "Disable workflow" e cancelar a rodada em curso. Como funciona por dentro:
+[src/eleicoes/ao_vivo/coletor.py](src/eleicoes/ao_vivo/coletor.py).
 
 Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada hora, até as 17h de 25/10, o GitHub
 Actions ([.github/workflows/site.yml](.github/workflows/site.yml)) roda `uv run eleicoes atualizar`, faz o commit
@@ -68,10 +91,10 @@ npm run build      # site estático em site/dist, sem nenhuma dependência exter
 ## Organização
 
 ```
-.github/workflows/     publicação do site no GitHub Pages e atualização a cada hora (GitHub Actions)
+.github/workflows/     publicação do site no GitHub Pages, atualização a cada hora e a coleta da apuração (GitHub Actions)
 config/eleicoes.toml   anos, turnos, códigos do TSE, candidatos e cores de cada campo
 src/eleicoes/          o código (pacote Python)
-  ao_vivo/             painel da apuração em tempo real
+  ao_vivo/             painel da apuração em tempo real e a coleta dela na nuvem (coletor.py, juntar.py)
   coleta/              downloads (TSE, IBGE, pesquisas)            [Etapa 1]
   tratamento/          dados brutos -> tabelas limpas              [Etapa 1]
   analises/            o que alimenta o site (apuração no tempo, resultados, pesquisas, mapa)
