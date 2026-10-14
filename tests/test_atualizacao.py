@@ -73,6 +73,24 @@ def test_mudanca_so_no_registro_do_tse_e_publicada_sem_problema():
     assert A.problemas(m, 2026, hoje=HOJE) == []
 
 
+def test_pesquisa_que_so_mudou_de_nome_nao_some():
+    """Gravadas com os nomes de antes (o instituto "BTG Pactual" contratado pela "Nexus", "Apex" pela "Futura", "Vox")
+    e lidas de novo com os de agora, as pesquisas não somem nem aparecem: são renomeadas, e a revisão passa. Com a
+    chave pelo nome gravado, a primeira rodada depois da troca dos nomes via 41 pesquisas sumindo e recusava."""
+    antigas = [{**_p("BTG Pactual", 46, 47, (10, 10), (12, 10)), "contratante": "Nexus"},
+               {**_p("Apex", 43, 48, (11, 9), (15, 9), registro=None), "contratante": "Futura"},
+               {**_p("Vox", 45, 48, (5, 10), (7, 10)), "contratante": None}, *ANTIGAS]
+    novas = [{**antigas[0], "instituto": "Nexus", "contratante": "BTG Pactual"},
+             {**antigas[1], "instituto": "Futura", "contratante": "Apex", "registro": "BR007492026"},
+             {**antigas[2], "instituto": "Vox Brasil"}, *ANTIGAS]
+    m = A.comparar(antigas, novas)
+    assert not m["novas"] and not m["sumidas"] and not m["alteradas"]
+    assert [(a["instituto"], n["instituto"]) for a, n in m["renomeadas"]] == [
+        ("Apex", "Futura"), ("Vox", "Vox Brasil"), ("BTG Pactual", "Nexus")]
+    assert [p["instituto"] for p in m["religadas"]] == ["Futura"]
+    assert A.problemas(m, 2026, referencia=48.2, hoje=HOJE) == []
+
+
 def test_projecao_vai_ate_a_ultima_conferencia_da_pagina(monkeypatch):
     rev = {"revid": 1, "baixado_em": "2026-10-07T16:55:07"}
     monkeypatch.setattr(wikipedia, "revisao", lambda ano: rev)

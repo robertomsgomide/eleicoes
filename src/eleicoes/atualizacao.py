@@ -72,7 +72,9 @@ def descrever(p, nomes):
 
 
 def _chave(p):
-    return p["turno"], p["instituto"], p["inicio"], p["fim"]
+    # o instituto pelas regras de agora: as pesquisas guardadas antes de um apelido novo (ou com o contratante tomado
+    # pelo instituto) não "somem" para reaparecer com o nome novo
+    return p["turno"], tratamento.canonico(p), p["inicio"], p["fim"]
 
 
 def _ordem(k):
@@ -81,18 +83,22 @@ def _ordem(k):
 
 def comparar(antigas, novas):
     """O que mudou de uma leitura da página para outra: pesquisas novas, sumidas, alteradas ([(antiga, nova, maior
-    mudança nos números, em p.p.)]) e ligadas a outro registro do TSE."""
+    mudança nos números, em p.p.)]), ligadas a outro registro do TSE e renomeadas ([(antiga, nova)]: o mesmo
+    instituto com outro nome)."""
     a, n = {_chave(p): p for p in antigas}, {_chave(p): p for p in novas}
-    alteradas, religadas = [], []
+    alteradas, religadas, renomeadas = [], [], []
     for k in sorted(a.keys() & n.keys(), key=_ordem):
         d = max(abs(n[k][c] - a[k][c]) for c in NUMEROS)
         if d > 0.001 or n[k]["amostra"] != a[k]["amostra"]:
             alteradas.append((a[k], n[k], round(d, 2)))
-        elif n[k]["registro"] != a[k]["registro"]:
+            continue
+        if n[k]["registro"] != a[k]["registro"]:
             religadas.append(n[k])
+        if n[k]["instituto"] != a[k]["instituto"]:
+            renomeadas.append((a[k], n[k]))
     return {"novas": [n[k] for k in sorted(n.keys() - a.keys(), key=_ordem)],
             "sumidas": [a[k] for k in sorted(a.keys() - n.keys(), key=_ordem)],
-            "alteradas": alteradas, "religadas": religadas}
+            "alteradas": alteradas, "religadas": religadas, "renomeadas": renomeadas}
 
 
 def problemas(m, ano, referencia=None, hoje=None):
@@ -210,7 +216,8 @@ def _conferir(ano, revid, forcar, aviso):
               "sumiu": [descrever(p, nomes) for p in m["sumidas"]],
               "alterada": [f"{descrever(a, nomes)} → agora {_pct(n['petismo_validos'])} × {_pct(n['bolsonarismo_validos'])}, "
                            f"amostra {n['amostra']}" for a, n, _ in m["alteradas"]],
-              "ligada a outro registro do TSE": [descrever(p, nomes) for p in m["religadas"]]}
+              "ligada a outro registro do TSE": [descrever(p, nomes) for p in m["religadas"]],
+              "renomeada": [f"{descrever(a, nomes)} → agora {n['instituto']}" for a, n in m["renomeadas"]]}
     for rotulo, itens in linhas.items():
         for x in itens[:LISTAR]:
             _log(f"   {rotulo}: {x}")
