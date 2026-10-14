@@ -5,8 +5,8 @@ Saídas em dados/processado/pesquisas/:
   pesquisas_<ano>.parquet  uma linha por pesquisa e turno: o cenário com os dois campos, em % do total e dos
                            votos válidos, com o número de registro no TSE e como a ligação foi feita
 
-Ligação com o registro do TSE (PesqEle): pelo número de registro citado na Wikipedia; sem ele, pela
-amostra idêntica e datas de campo coincidentes (± 2 dias), desempatando pelo nome do instituto.
+Ligação com o registro do TSE (PesqEle): pelo número de registro citado na Wikipedia; sem ele, pela mesma
+empresa, amostra (± 3%) e fim do campo (± 3 dias), com algum dia de campo em comum (ver `ligar`).
 """
 import csv
 import datetime as dt
@@ -25,21 +25,23 @@ MESES = {"jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6, "jul": 7, "
 # BR-09479/2022; na Wikipedia também aparece com hífen tipográfico, travessão, 4 ou 6 dígitos
 REGISTRO = re.compile(r"\b([A-Z]{2})[\s\-‐‑–—]*(\d{3,6})\s*/\s*(\d{4})")
 NAO_VALIDOS = ("indecis", "absten", "abst", "branco", "nulo", "naodecid", "absent", "nenhum", "naosabe")
-# Grafias diferentes do mesmo instituto (a chave é o nome sem acento, minúsculo e só com letras e números)
+# Grafias diferentes do mesmo instituto (a chave é o nome sem acento, minúsculo e só com letras e números), com um
+# nome por empresa: "Vox" e "Vox Brasil" são o Instituto Vox Brasil, "Alfa" e "Alfa Inteligência" a Alfa
+# Inteligência. Só institutos: quem só contrata (BTG Pactual, da FSB e da Nexus; Apex, da Futura) fica de fora, para
+# não ser tomado pelo instituto na célula da tabela (ver _pesquisa).
 INSTITUTOS = {
     "datafolha": "Datafolha", "ibope": "Ibope", "ipec": "Ipec", "quaest": "Quaest", "atlasintel": "AtlasIntel",
     "atlas": "AtlasIntel", "atlasinstel": "AtlasIntel", "ipespe": "Ipespe", "mda": "MDA", "fsb": "FSB",
     "fsbpesquisa": "FSB", "futura": "Futura", "futurainteligencia": "Futura", "paranapesquisas": "Paraná Pesquisas",
     "poderdata": "PoderData", "datapoder360": "PoderData", "realtimebigdata": "Real Time Big Data", "ideia": "Ideia",
-    "ideiabigdata": "Ideia", "btg": "BTG Pactual", "btgpactual": "BTG Pactual", "verita": "Veritá",
-    "institutoverita": "Veritá",
+    "ideiabigdata": "Ideia", "verita": "Veritá", "institutoverita": "Veritá", "nexus": "Nexus", "indexa": "Indexa",
+    "vox": "Vox Brasil", "voxbrasil": "Vox Brasil", "alfa": "Alfa Inteligência", "alfainteligencia": "Alfa Inteligência",
 }
 # Como o instituto aparece no nome da empresa no registro do TSE, quando não é o próprio nome
 NO_REGISTRO = {
     "Paraná Pesquisas": ["paranadepesquisas", "paranapesquisas"],
     "Ipec": ["ipec", "inteligenciaempesquisa"],
-    "Vox": ["voxbrasil", "voxdobrasil"],
-    "BTG Pactual": ["nexus"],  # as pesquisas BTG Pactual de 2026 são feitas pela Nexus
+    "Futura": ["futura", "100cidades"],  # 2026: as pesquisas da Futura estão em nome da 100% Cidades Participações
 }
 
 
@@ -155,14 +157,30 @@ def _datas(s):
     return int(d1), m1, int(a1) if a1 else None, int(d2), m2, int(a2) if a2 else None
 
 
+def _do_instituto(partes):
+    """Qual das partes do nome é o instituto: a última que está em INSTITUTOS, em qualquer ordem ("Nexus / BTG
+    Pactual" e "BTG / Nexus" são a Nexus); sem nenhuma conhecida, a última, como em "Globo / Datafolha"."""
+    return max((i for i, x in enumerate(partes) if chave(x) in INSTITUTOS), default=len(partes) - 1)
+
+
 def _pesquisa(s):
     """(contratante, instituto, registro) de "Globo / Datafolha [28] BR-09479/2022"."""
     r = REGISTRO.search(s)
     registro = f"{r[1]}{int(r[2]):05d}{r[3]}" if r else None  # formato do TSE: BR094792022
     nome = _sem_refs(REGISTRO.sub("", s)).strip(" /-")
-    partes = [p.strip() for p in re.split(r"\s*/\s*", nome) if p.strip()]
-    instituto = partes[-1] if partes else nome
-    return " / ".join(partes[:-1]) or None, INSTITUTOS.get(chave(instituto), instituto), registro
+    partes = [p.strip() for p in re.split(r"\s*/\s*", nome) if p.strip()] or [nome]
+    i = _do_instituto(partes)
+    return " / ".join(partes[:i] + partes[i + 1:]) or None, INSTITUTOS.get(chave(partes[i]), partes[i]), registro
+
+
+def canonico(p):
+    """O instituto de uma pesquisa já gravada (com `instituto` e `contratante`) pelas regras de agora: o nome que ela
+    teria se a tabela fosse lida hoje, mesmo que tenha sido gravada antes de um apelido novo (gravada como instituto
+    "BTG Pactual" e contratante "Nexus", é a Nexus). Assim atualizacao.comparar reconhece a pesquisa que só mudou de
+    nome."""
+    partes = [x for x in (p.get("contratante") or "").split(" / ") if x] + [p["instituto"]]
+    x = partes[_do_instituto(partes)]
+    return INSTITUTOS.get(chave(x), x)
 
 
 def ler_wikipedia(ano, html=None):
@@ -319,8 +337,11 @@ def ligar(p, por_protocolo, registros):
     """(protocolo, parte do nome que é o instituto registrado, como).
 
     Pelo número de registro citado na Wikipedia; sem ele (ou se não existir no TSE), pela mesma empresa com
-    amostra a até 3% da registrada e fim de campo a até 3 dias: o registro traz o planejado, a Wikipedia o feito.
-    Amostra e datas sozinhas não bastam: amostras de 2.000 entrevistas são comuns a muitos institutos.
+    amostra a até 3% da registrada, fim de campo a até 3 dias e algum dia de campo em comum com o registrado: o
+    registro traz o planejado, a Wikipedia o feito. Amostra e datas sozinhas não bastam: amostras de 2.000
+    entrevistas são comuns a muitos institutos. Sem o dia em comum, a Datafolha de 28/09 a 01/10/2026 (2.002
+    entrevistas na tabela do 2º turno) ficava ligada ao registro de outra, de 02 a 03/10 (2.010); o início do campo,
+    a uma distância fixa, não serve: a Ipec registrava 7 dias e fazia o campo nos 3 últimos.
     """
     partes = [x for x in (p["contratante"] or "").split(" / ") if x] + [p["instituto"]]
     if p["registro_wikipedia"] and p["registro_wikipedia"] in por_protocolo:
@@ -331,7 +352,8 @@ def ligar(p, por_protocolo, registros):
     achados = []
     for r in registros:
         if not (r["fim"] and r["amostra"] and abs((r["fim"] - p["fim"]).days) <= 3
-                and abs(r["amostra"] - p["amostra"]) <= max(0.03 * p["amostra"], 10)):
+                and abs(r["amostra"] - p["amostra"]) <= max(0.03 * p["amostra"], 10)
+                and (r["inicio"] or r["fim"]) <= p["fim"] and p["inicio"] <= r["fim"]):
             continue
         parte = next((x for x in reversed(partes) if _mesmo_instituto(x, r)), None)
         if parte:
@@ -454,8 +476,8 @@ def relatorio(anos):
         sem += [(ano, *r) for r in duckdb.sql(f"""SELECT turno, instituto, inicio, fim, amostra FROM '{arq.as_posix()}'
                                                   WHERE registro IS NULL ORDER BY turno, fim""").fetchall()]
     linhas += ["", "## Pesquisas sem registro encontrado", "",
-               "Não aparecem no registro nacional do TSE com a mesma empresa, amostra (± 3%) e fim do campo (± 3 dias). "
-               "Ficam no estudo, marcadas como \"sem registro\".", "",
+               "Não aparecem no registro nacional do TSE com a mesma empresa, amostra (± 3%) e fim do campo (± 3 dias), "
+               "com algum dia de campo em comum. Ficam no estudo, marcadas como \"sem registro\".", "",
                "| Ano | Turno | Instituto | Campo | Amostra |", "|---|---|---|---|--:|"]
     linhas += [f"| {a} | {t}º | {i} | {ini:%d/%m} a {fim:%d/%m} | {amostra or '–'} |" for a, t, i, ini, fim, amostra in sem]
     (config.RAIZ / "docs" / "qualidade_pesquisas.md").write_text("\n".join(linhas) + "\n", "utf-8")
