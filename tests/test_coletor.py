@@ -124,8 +124,10 @@ def tse(monkeypatch, tmp_path):
     return falso
 
 
-def coletor(raiz, nome="a", job="1.1-1"):
+def coletor(raiz, nome="a", job="1.1-1", previsor=None):
     c = C.Coletor(nome, raiz, "ao-vivo-" + nome, job, C.EPOCA, C.PERIODO, C.FIM_MAXIMO, usar_git=False, log=lambda *_: None)
+    c.sem_previsor = previsor is None  # sem o prior do país inteiro: o forecast tem o seu teste, com um prior pequeno
+    c.previsor = previsor
     c.retomar()
     c.grav = C.Gravador(raiz / job)
     return c
@@ -161,14 +163,61 @@ def test_rodadas_gravam_o_primeiro_horario_de_cada_secao_e_cada_versao_nova(tse,
     # as UFs sem arquivo de resultado deram erro uma vez e só são lidas de novo 10 min depois
     assert len(rodadas[0]["falhas_uf"]) == len(H.UFS) - 1 and rodadas[1]["falhas_uf"] == []
 
-    p = c.painel()["dados"]  # o dados.json do ramo
-    assert p["recebidas"][-1] == 2 and [o["h"] for o in p["oficiais"]] == ["2026-10-25T17:02:00", "2026-10-25T17:06:00"]
+    p = c.painel()  # o dados.json do ramo: a apuração com as leituras oficiais (o país e a soma das UFs de cada região)
+    assert p["apuracao"]["regioes"]["Brasil"]["secoes"] == [1, 2] and p["apuracao"]["regioes"]["Norte"]["secoes"] == [1, 1]
+    assert p["tse"]["h"] == "2026-10-25T17:06:00" and p["tse"]["petismo"] == 110 and p["ufs"]["AC"]["st"] == 1
+    assert p["previsao"] is None and p["previsoes"] == []
 
     # o job seguinte retoma do ramo: não grava de novo o que este já gravou
     c.grav.fechar()
     seguinte = coletor(raiz, job="1.1-2")
     assert len(seguinte.vistas) == 2 and len(seguinte.br) == 2 and seguinte.mun[("ac", "00001")]["st"] == 2
     assert H._mun[("ac", "00001")]["st"] == 2
+
+
+def test_o_forecast_vai_no_dados_json_e_o_mapa_no_mapa_json(tse, tmp_path, monkeypatch):
+    import numpy as np
+
+    from eleicoes.ao_vivo import painel as P
+    from eleicoes.modelos import forecast as F
+    t1 = {"uf": np.array(["AC", "AC"]), "regiao": np.array(["Norte", "Norte"]), "municipio": np.array(["00001", "00001"]),
+          "ibge": np.array([1200013.0, 1200013.0]), "zona": np.array([1, 1]), "secao": np.array([1, 2]),
+          "petismo": np.array([60, 50]), "bolsonarismo": np.array([40, 40]), "outros": np.array([10, 10]),
+          "aptos": np.array([150, 150]), "comparecimento": np.array([120, 120]), "chegada": np.array([5.0, 10.0])}
+    previsor = P.Previsor(F.Prior.criar(t1, 0.55, 2.0), dt.datetime(2026, 10, 25, 17), {"petismo": "13", "bolsonarismo": "22"},
+                          log=lambda *_: None)
+    mapa = tmp_path / "municipios.json"
+    mapa.write_text(json.dumps({"codigo": [1200013, 1200054]}), "utf-8")
+    monkeypatch.setattr(P, "MUNICIPIOS_DO_MAPA", mapa)
+    s1, s2 = ("00001", "0001", "0001"), ("00001", "0001", "0002")
+    tse.publicar(H.url_secoes("ac"), config_secoes("ac", {s1: "25/10/2026 17:01:10", s2: None}))
+    tse.publicar(H.URL_BR, resultado("br", "17:02:00", 1, 2, 60, 40))
+    tse.publicar(H.url_resultado("ac"), resultado("ac", "17:02:00", 1, 2, 60, 40))
+    tse.publicar(H.url_resultado("ac00001"), resultado("00001", "17:02:00", 1, 2, 60, 40))
+    raiz = tmp_path / "ramo-a"
+    c = coletor(raiz, previsor=previsor)
+    c.rodada()
+    c.enviar()
+    d = json.loads((raiz / "dados.json").read_text("utf-8"))
+    assert d["previsao"]["apurado"] == 50 and d["previsao"]["brasil"]["votos"]["petismo"] > 60
+    assert [x["h"] for x in d["previsoes"]] == ["2026-10-25T17:02:00"]
+    m = json.loads((raiz / "mapa.json").read_text("utf-8"))["municipios"]
+    assert m["secoes"] == [1, None] and m["total"] == [2, None] and m["petismo"] == [60, None]
+    # tudo apurado: o forecast é o resultado
+    tse.publicar(H.url_secoes("ac"), config_secoes("ac", {s1: "25/10/2026 17:01:10", s2: "25/10/2026 17:05:00"}))
+    tse.publicar(H.URL_BR, resultado("br", "17:06:00", 2, 2, 110, 90))
+    tse.publicar(H.url_resultado("ac"), resultado("ac", "17:06:00", 2, 2, 110, 90))
+    tse.publicar(H.url_resultado("ac00001"), resultado("00001", "17:06:00", 2, 2, 110, 90))
+    H._lido.clear()
+    c.rodada()
+    c.enviar()
+    d = json.loads((raiz / "dados.json").read_text("utf-8"))
+    assert d["previsao"]["brasil"]["petismo"] == 55.0 and d["previsao"]["brasil"]["desvio"] == 0
+    assert len(d["previsoes"]) == 2
+    # o job seguinte continua o histórico do forecast
+    c.grav.fechar()
+    seguinte = coletor(raiz, job="1.1-2", previsor=P.Previsor(previsor.prior, previsor.inicio, previsor.numeros))
+    assert len(seguinte.previsoes) == 2 and len(seguinte.chegadas) == 2
 
 
 def test_uf_sem_arquivo_de_secoes_nao_derruba_a_rodada(tse, tmp_path):
