@@ -28,8 +28,8 @@ export function miEixo(v) {
   return nf(0).format(v);
 }
 
-// Pontos percentuais com sinal: +1,8 p.p.
-export const pp = (v, casas = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(casas).format(Math.abs(v)) + " p.p.";
+// Pontos percentuais com sinal: +1,8 p.p. (espaço fixo: o número e a unidade não se separam na quebra de linha)
+export const pp = (v, casas = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(casas).format(Math.abs(v)) + "\u00a0p.p.";
 export const comSinal = (v, f = num) => (v > 0 ? "+" : v < 0 ? "−" : "") + f(Math.abs(v));
 
 // As horas são guardadas como datas UTC com o relógio de Brasília; por isso tudo é lido em UTC.

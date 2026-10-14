@@ -19,6 +19,16 @@ const TINTA_SUAVE = "var(--theme-foreground-muted)";
 const TINTA_FRACA = "var(--theme-foreground-faint)";
 const FUNDO = "var(--theme-background)";
 
+// O Plot não mede, não quebra nem encolhe texto, e o que passa da borda do gráfico some (no celular, sobretudo). A
+// largura de um texto é estimada pela linha mais longa: 0,55 do corpo por letra, com folga sobre as fontes do sistema.
+const largura = (texto, corpo = 10) => Math.max(...String(texto).split("\n").map((l) => l.length)) * corpo * 0.55;
+
+// Das versões de um texto, da mais completa à mais curta, a primeira que cabe no espaço (em px)
+const caber = (espaco, versoes, corpo = 10) => versoes.find((t) => largura(t, corpo) <= espaco) ?? versoes.at(-1);
+
+// Se duas caixas [x0, y0, x1, y1] (em px) se cobrem em mais de 1 px nas duas direções
+const cruzam = (a, b) => a[0] < b[2] - 1 && b[0] < a[2] - 1 && a[1] < b[3] - 1 && b[1] < a[3] - 1;
+
 // ---- Peças de HTML ------------------------------------------------------------------
 
 export function legenda(itens) {
@@ -221,26 +231,53 @@ function marcasPrevisao(pontos, {x, medida}) {
 }
 
 // No eixo de % apurado, enquanto falta apurar: onde o forecast prevê que cada curva termine (100%), com a faixa de 80%.
-function marcasDestino(pontos, {medida, nomes, apurado}) {
+// Na vantagem, já com o texto; nos dois campos, o texto de cada ponto (em `fins`) vem de textoDestino, que acha onde
+// ele cabe sem cobrir as curvas e os rótulos do fim delas.
+function marcasDestino(pontos, {medida, apurado}) {
   const f = pontos.at(-1);
-  if (!f || apurado >= 99) return [];
+  if (!f || apurado >= 99) return {marcas: [], fins: []};
   if (medida === "vantagem") {
     const d = [{x: 100, valor: f.vantagem, inf: f.vinf, sup: f.vsup}];
-    return [
-      Plot.ruleX(d, {x: "x", y1: "inf", y2: "sup", stroke: TINTA_SUAVE, strokeWidth: 3, strokeOpacity: 0.6}),
-      Plot.dot(d, {x: "x", y: "valor", r: 4, fill: TINTA, stroke: FUNDO, strokeWidth: 1.5}),
-      Plot.text(d, {x: "x", y: "valor", dx: -8, textAnchor: "end", text: (x) => `previsto: ${comSinal(x.valor, mi)}`, fill: TINTA, fontSize: 11})
-    ];
+    return {
+      marcas: [
+        Plot.ruleX(d, {x: "x", y1: "inf", y2: "sup", stroke: TINTA_SUAVE, strokeWidth: 3, strokeOpacity: 0.6}),
+        Plot.dot(d, {x: "x", y: "valor", r: 4, fill: TINTA, stroke: FUNDO, strokeWidth: 1.5}),
+        Plot.text(d, {x: "x", y: "valor", dx: -8, textAnchor: "end", text: (x) => `previsto: ${comSinal(x.valor, mi)}`, fill: TINTA, fontSize: 11})
+      ],
+      fins: []
+    };
   }
   const d = medida === "votos"
     ? CAMPOS.map((c) => ({campo: c, x: 100, valor: f[`votos_${c}`]}))
     : [{campo: "petismo", x: 100, valor: f.petismo, inf: f.inf, sup: f.sup}, {campo: "bolsonarismo", x: 100, valor: 100 - f.petismo, inf: 100 - f.sup, sup: 100 - f.inf}];
+  return {
+    marcas: [
+      ...(medida === "votos" ? [] : [Plot.ruleX(d, {x: "x", y1: "inf", y2: "sup", stroke: "campo", strokeWidth: 3, strokeOpacity: 0.5})]),
+      Plot.dot(d, {x: "x", y: "valor", r: 4, fill: "campo", stroke: FUNDO, strokeWidth: 1.5})
+    ],
+    fins: afastar(d)
+  };
+}
+
+// O texto do destino de cada curva: à esquerda do ponto, com o nome; senão só o número, à direita, na margem; senão
+// nenhum (o ponto fica, e a dica e os placares trazem o forecast). Vale o primeiro que fica no gráfico, à direita do fim
+// das curvas e fora das caixas `ocupadas` (os rótulos do fim delas). Os lugares, em px, vêm das escalas (sx, sy) de
+// um primeiro desenho do gráfico. Perto do fim da apuração, curva e forecast se aproximam e os textos se encontrariam.
+function textoDestino(fins, {medida, nomes, sx, sy, width, marginLeft, fimCurvas, ocupadas}) {
   const fmt = medida === "votos" ? mi : (v) => pct(v, 1);
-  return [
-    ...(medida === "votos" ? [] : [Plot.ruleX(d, {x: "x", y1: "inf", y2: "sup", stroke: "campo", strokeWidth: 3, strokeOpacity: 0.5})]),
-    Plot.dot(d, {x: "x", y: "valor", r: 4, fill: "campo", stroke: FUNDO, strokeWidth: 1.5}),
-    ...afastar(d).map((x) => Plot.text([x], {x: "x", y: "valor", dy: x.dy, dx: -8, textAnchor: "end", text: () => `${nomes[x.campo]} previsto: ${fmt(x.valor)}`, fill: TINTA, fontSize: 11}))
+  const versoes = [
+    {dx: -8, textAnchor: "end", texto: (d) => `${nomes[d.campo]} previsto: ${fmt(d.valor)}`},
+    {dx: 8, textAnchor: "start", texto: (d) => fmt(d.valor)}
   ];
+  const caixa = (d, v) => {
+    const w = largura(v.texto(d), 11);
+    const x = sx.apply(100) + v.dx;
+    const y = sy.apply(d.valor) + d.dy;
+    return v.dx < 0 ? [x - w, y - 6, x, y + 6] : [x, y - 6, x + w, y + 6];
+  };
+  const cabe = (c) => c[0] >= Math.max(marginLeft, fimCurvas + 4) && c[2] <= width && !ocupadas.some((o) => cruzam(c, o));
+  const v = versoes.find((v) => fins.every((d) => cabe(caixa(d, v))));
+  return v ? fins.map((d) => Plot.text([d], {x: "x", y: "valor", dy: d.dy, dx: v.dx, textAnchor: v.textAnchor, text: v.texto, fill: TINTA, fontSize: 11})) : [];
 }
 
 // Uma noite refeita (data/forecast.json, noites[ano]: colunas) no formato de previsao.serie (uma linha por momento).
@@ -260,11 +297,17 @@ export function viradaPrevista(ap, serie) {
   return vencedor !== lider && chance >= 0.8 ? {vencedor, chance} : null;
 }
 
-function marcaViradaPrevista(v, nomes) {
-  if (!v) return [];
+// O aviso da virada prevista, no canto direito do quadro (largura `quadro`), encurtado até caber, em até duas linhas: no
+// alto, abaixo das `linhasAcima` linhas de texto que já houver ali; nos votos, embaixo, longe dos votos previstos para o
+// fim, que ficam no alto. Devolve as marcas e quantas linhas o aviso ocupa.
+function marcaViradaPrevista(v, nomes, {quadro, embaixo = false, linhasAcima = 0}) {
+  if (!v) return {marcas: [], linhas: 0};
   const ch = 100 * v.chance;
-  const texto = `Virada prevista: ${nomes[v.vencedor]} deve terminar à frente (chance de ${ch >= 99.95 ? "mais de 99,9%" : pct(ch, ch >= 99 ? 1 : 0)})`;
-  return [Plot.text([texto], {frameAnchor: "top-right", dy: 2, dx: -4, textAnchor: "end", lineAnchor: "top", fill: COR[v.vencedor], fontWeight: 600, fontSize: 12})];
+  const chance = ch >= 99.95 ? "mais de 99,9%" : pct(ch, ch >= 99 ? 1 : 0);
+  const nome = nomes[v.vencedor];
+  const texto = caber(quadro - 8, [`Virada prevista: ${nome} deve terminar à frente (chance de ${chance})`, `Virada prevista: ${nome} (chance de ${chance})`, `Virada prevista: ${nome}`, `Virada prevista:\n${nome}`], 12);
+  const lugar = embaixo ? {frameAnchor: "bottom-right", dy: -4, lineAnchor: "bottom"} : {frameAnchor: "top-right", dy: 2 + 15 * linhasAcima, lineAnchor: "top"};
+  return {marcas: [Plot.text([texto], {...lugar, dx: -4, textAnchor: "end", fill: COR[v.vencedor], fontWeight: 600, fontSize: 12})], linhas: texto.split("\n").length};
 }
 
 // Afasta dois rótulos finais quando os valores ficam colados.
@@ -282,18 +325,24 @@ function rotulosFinais(fins, x, texto, dx = 8) {
   return fins.map((d) => Plot.text([d], {x, y: "valor", dy: d.dy, dx, text: texto, textAnchor: "start", fill: TINTA, fontWeight: 600}));
 }
 
-// Linha tracejada vertical, ponto e texto no momento em que muda o líder.
-function marcaVirada(ap, linhas, x, valor, nomes) {
+// Linha tracejada vertical, ponto e texto no momento em que muda o líder. O texto fica centrado na linha, mas dentro do
+// quadro (largura `quadro`; noQuadro: onde um x cai nele, em px), e encurta quando não cabe.
+function marcaVirada(ap, linhas, x, valor, nomes, {quadro, noQuadro}) {
   const v = ap.viradas.at(-1);
   if (!v) return [];
   const d = linhas.find((l) => l.minuto >= v.t);
   if (!d) return [];
   const ponto = {...d, valor: valor(d, v.lider)};
-  const texto = `${nomes[v.lider]} passa à frente · ${ap.tipo === "estimada" ? "~" : ""}${hora(d.hora)} · ${pct(d.apurado, 1)} apurado`;
+  const quando = `${ap.tipo === "estimada" ? "~" : ""}${hora(d.hora)}`;
+  const texto = caber(quadro, [`${nomes[v.lider]} passa à frente · ${quando} · ${pct(d.apurado, 1)} apurado`, `${nomes[v.lider]} passa à frente · ${quando}`, `Virada · ${quando}`], 12);
+  const meia = largura(texto, 12) / 2;
+  const centro = noQuadro(d[x]);
+  const dx = Math.max(meia, Math.min(quadro - meia, centro)) - centro;
+  // um contorno da cor do cartão separa o texto da linha da virada e das curvas que passam por ele
   return [
     Plot.ruleX([ponto], {x, stroke: TINTA_SUAVE, strokeDasharray: "2,3"}),
     Plot.dot([ponto], {x, y: "valor", r: 5, fill: COR[v.lider], stroke: FUNDO, strokeWidth: 2}),
-    Plot.text([ponto], {x, text: () => texto, frameAnchor: "top", dy: 2, lineAnchor: "top", textAnchor: "middle", fill: TINTA, fontSize: 12})
+    Plot.text([ponto], {x, text: () => texto, frameAnchor: "top", dy: 2, dx, lineAnchor: "top", textAnchor: "middle", fill: TINTA, fontSize: 12, stroke: "var(--theme-background-alt)", strokeWidth: 4, paintOrder: "stroke"})
   ];
 }
 
@@ -316,15 +365,29 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
   const prev = previsao?.serie?.length ? pontosPrevisao(ap, previsao.serie, porHora) : [];
   const previsto = prev.length ? forecastNoMomento(prev, porHora) : null;
   const apuradoAgora = (100 * ap.regioes.Brasil.secoes.at(-1)) / (ap.totais.Brasil.secoes || 1);
-  const camada = [...marcasPrevisao(prev, {x, medida}), ...(porHora ? [] : marcasDestino(prev, {medida, nomes, apurado: apuradoAgora}))];
-  const virada = aoVivo ? marcaViradaPrevista(viradaPrevista(ap, previsao?.serie), nomes) : [];
+  const estreito = width < 560;
+  // As margens e, entre elas, o quadro, onde os textos soltos precisam caber. noQuadro: onde um x cai no quadro, em px
+  // (por hora, o eixo vai do primeiro ao último ponto da curva e do forecast).
+  const margens = medida === "vantagem" ? {marginLeft: 64, marginRight: 20} : {marginLeft: 52, marginRight: estreito ? 64 : 172};
+  const quadro = width - margens.marginLeft - margens.marginRight;
+  const horas = porHora ? [...linhas, ...prev].map((d) => +d.hora) : [];
+  const [xi, xf] = porHora ? [Math.min(...horas), Math.max(...horas)] : [x0, 100];
+  const noQuadro = (v) => (quadro * (+v - xi)) / (xf - xi || 1);
+  const destino = porHora ? {marcas: [], fins: []} : marcasDestino(prev, {medida, apurado: apuradoAgora});
+  const previstas = marcasPrevisao(prev, {x, medida});
+  const prevista = aoVivo ? viradaPrevista(ap, previsao?.serie) : null;
 
   if (medida === "vantagem") {
     const vant = (d) => d.petismo - d.bolsonarismo;
+    const virada = marcaVirada(ap, linhas, x, (d) => vant(d), nomes, {quadro, noQuadro});
+    const aviso = marcaViradaPrevista(prevista, nomes, {quadro, linhasAcima: virada.length ? 1 : 0});
+    // "↑ … à frente" desce o quanto os textos do alto ocupam; ele e "↓ … à frente" perdem o "à frente" se não cabem
+    const noAlto = (virada.length ? 1 : 0) + aviso.linhas;
+    const lado = (seta, c) => caber(quadro - 8, [`${seta} ${nomes[c]} à frente`, `${seta} ${nomes[c]}`], 12);
     return Plot.plot({
       width,
       height: 380,
-      marginLeft: 64,
+      ...margens,
       marginTop: 28,
       x: escalaX(porHora, x0),
       y: {label: "Vantagem em votos", labelArrow: "none", grid: true, tickFormat: (v) => comSinal(v, miEixo)},
@@ -332,12 +395,13 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
         Plot.areaY(linhas, {x, y: (d) => Math.max(0, vant(d)), fill: COR.petismo, fillOpacity: 0.2, curve}),
         Plot.areaY(linhas, {x, y: (d) => Math.min(0, vant(d)), fill: COR.bolsonarismo, fillOpacity: 0.2, curve}),
         Plot.ruleY([0], {stroke: TINTA_SUAVE}),
-        ...camada,
+        ...previstas,
+        ...destino.marcas,
         Plot.line(linhas, {x, y: vant, stroke: TINTA, strokeWidth: 2, curve, strokeDasharray: tracejado}),
-        Plot.text([`↑ ${nomes.petismo} à frente`], {frameAnchor: "top-left", dx: 8, dy: 4, textAnchor: "start", fill: TINTA_SUAVE, fontSize: 12}),
-        Plot.text([`↓ ${nomes.bolsonarismo} à frente`], {frameAnchor: "bottom-left", dx: 8, dy: -4, textAnchor: "start", fill: TINTA_SUAVE, fontSize: 12}),
-        ...marcaVirada(ap, linhas, x, (d) => vant(d), nomes),
+        Plot.text([lado("↑", "petismo")], {frameAnchor: "top-left", dx: 8, dy: 4 + 15 * noAlto, textAnchor: "start", fill: TINTA_SUAVE, fontSize: 12}),
+        Plot.text([lado("↓", "bolsonarismo")], {frameAnchor: "bottom-left", dx: 8, dy: -4, textAnchor: "start", fill: TINTA_SUAVE, fontSize: 12}),
         ...virada,
+        ...aviso.marcas,
         regua,
         Plot.tip(linhas, Plot.pointerX({x, y: vant, title: (d) => dica(d, nomes, {estimada, previsto})}))
       ]
@@ -348,27 +412,46 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
   const longas = linhas.flatMap((d) => CAMPOS.map((c) => ({...d, campo: c, valor: m.valor(d, c)})));
   const maiorPrevisto = medida === "votos" ? Math.max(0, ...prev.flatMap((f) => CAMPOS.map((c) => f[`votos_${c}`]))) : 0;
   const fins = afastar(CAMPOS.map((c) => longas.findLast((d) => d.campo === c)), "valor", maiorPrevisto);
-  const estreito = width < 560;
-  return Plot.plot({
-    width,
-    height: 380,
-    marginLeft: 52,
-    marginTop: 28,
-    marginRight: estreito ? 64 : 172,
-    x: escalaX(porHora, x0),
-    y: {label: m.rotulo, labelArrow: "none", grid: true, nice: true, tickFormat: m.eixo},
-    color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
-    marks: [
-      medida === "pct" ? Plot.ruleY([50], {stroke: TINTA_FRACA, strokeDasharray: "3,3"}) : null,
-      ...camada,
-      Plot.line(longas, {x, y: "valor", z: "campo", stroke: "campo", strokeWidth: 2, curve, strokeDasharray: tracejado}),
-      ...rotulosFinais(fins, x, (d) => (estreito ? "" : `${nomes[d.campo]}  `) + m.fmt(d.valor)),
-      ...marcaVirada(ap, linhas, x, m.valor, nomes),
-      ...virada,
-      regua,
-      Plot.tip(linhas, Plot.pointerX({x, y: (d) => Math.max(m.valor(d, "petismo"), m.valor(d, "bolsonarismo")), title: (d) => dica(d, nomes, {estimada, previsto})}))
-    ]
+  const virada = marcaVirada(ap, linhas, x, m.valor, nomes, {quadro, noQuadro});
+  const aviso = marcaViradaPrevista(prevista, nomes, {quadro, embaixo: medida === "votos", linhasAcima: virada.length ? 1 : 0});
+  const rotuloFim = (d) => (estreito ? "" : `${nomes[d.campo]}  `) + m.fmt(d.valor);
+  // destinos: as marcas do destino do forecast e o texto delas
+  const desenhar = (destinos) =>
+    Plot.plot({
+      width,
+      height: 380,
+      ...margens,
+      marginTop: 28,
+      x: escalaX(porHora, x0),
+      y: {label: m.rotulo, labelArrow: "none", grid: true, nice: true, tickFormat: m.eixo},
+      color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
+      marks: [
+        medida === "pct" ? Plot.ruleY([50], {stroke: TINTA_FRACA, strokeDasharray: "3,3"}) : null,
+        ...previstas,
+        ...destinos,
+        Plot.line(longas, {x, y: "valor", z: "campo", stroke: "campo", strokeWidth: 2, curve, strokeDasharray: tracejado}),
+        ...rotulosFinais(fins, x, rotuloFim),
+        ...virada,
+        ...aviso.marcas,
+        regua,
+        Plot.tip(linhas, Plot.pointerX({x, y: (d) => Math.max(m.valor(d, "petismo"), m.valor(d, "bolsonarismo")), title: (d) => dica(d, nomes, {estimada, previsto})}))
+      ]
+    });
+  // Com o destino do forecast, o texto dele só entra depois de um primeiro desenho, que dá onde fica cada coisa
+  const rascunho = desenhar(destino.marcas);
+  if (!destino.fins.length) return rascunho;
+  const [sx, sy] = [rascunho.scale("x"), rascunho.scale("y")];
+  const ocupadas = fins.map((d) => {
+    const x1 = sx.apply(d[x]) + 8;
+    const y = sy.apply(d.valor) + d.dy;
+    return [x1, y - 6, x1 + largura(rotuloFim(d)), y + 6];
   });
+  // Perto do fim, os rótulos do fim das curvas chegam aos pontos do forecast, que então saem, como a partir de 99%: o
+  // forecast já coincide com a contagem
+  const pontosDestino = destino.fins.map((d) => [sx.apply(100) - 5, sy.apply(d.valor) - 5, sx.apply(100) + 5, sy.apply(d.valor) + 5]);
+  if (pontosDestino.some((p) => ocupadas.some((o) => cruzam(p, o)))) return desenhar([]);
+  const fimCurvas = sx.apply(apuradoAgora);
+  return desenhar([...destino.marcas, ...textoDestino(destino.fins, {medida, nomes, sx, sy, width, marginLeft: margens.marginLeft, fimCurvas, ocupadas})]);
 }
 
 // Regiões: ritmo da apuração (% das seções de cada região) ou votos válidos apurados em cada uma.
@@ -571,7 +654,10 @@ export function graficoComparacao(series, {modo = "vantagem", width = 640}) {
       y: modo === "vantagem" ? d.vantagem : d.vantagem - final.get(`${s.ano}-${s.turno}`)
     }))
   );
-  const fins = [...new Set(linhas.map((d) => `${d.ano}|${d.turno}`))].map((k) => linhas.findLast((d) => `${d.ano}|${d.turno}` === k));
+  // O ano no fim de cada curva; em "quanto ainda faltava mudar", todas terminam no zero, e o ano vai para o começo dela
+  const chaves = [...new Set(linhas.map((d) => `${d.ano}|${d.turno}`))];
+  const ponta = (k) => (modo === "vantagem" ? linhas.findLast((d) => `${d.ano}|${d.turno}` === k) : linhas.find((d) => `${d.ano}|${d.turno}` === k));
+  const rotulos = chaves.map(ponta);
   const empilhar = width < 640;
   const faceta = empilhar ? {fy: "turno"} : {fx: "turno"};
   const turnos = [...new Set(linhas.map((d) => d.turno))].sort().map((turno) => ({turno}));
@@ -582,7 +668,7 @@ export function graficoComparacao(series, {modo = "vantagem", width = 640}) {
     marginRight: 44,
     marginTop: 28,
     x: {domain: [0, 100], label: "Seções apuradas", labelArrow: "none", tickFormat: (v) => v + "%"},
-    y: {label: null, grid: true, tickFormat: (v) => (v > 0 ? "+" : "") + v}, // a unidade está no subtítulo do cartão
+    y: {label: null, grid: true, tickFormat: (v) => comSinal(v, (a) => a.toLocaleString("pt-BR"))}, // a unidade está no subtítulo do cartão
     fx: {label: null, axis: null},
     fy: {label: null, axis: null},
     color: {domain: anos, range: anos.map((a) => `var(--ano-${a})`)},
@@ -591,7 +677,8 @@ export function graficoComparacao(series, {modo = "vantagem", width = 640}) {
       Plot.ruleY([0], {stroke: TINTA_SUAVE}),
       Plot.line(linhas.filter((d) => d.trecho === "exato"), {x: "apurado", y: "y", z: "chave", stroke: "ano", strokeWidth: 2, ...faceta}),
       Plot.line(linhas.filter((d) => d.trecho === "estimado"), {x: "apurado", y: "y", z: "chave", stroke: "ano", strokeWidth: 2, strokeDasharray: "6,3", ...faceta}),
-      Plot.text(fins, {x: "apurado", y: "y", text: "ano", dx: 6, textAnchor: "start", fill: TINTA, fontWeight: 600, ...faceta}),
+      // no começo, o ano pode cruzar outra curva: um contorno da cor do cartão o separa dela
+      Plot.text(rotulos, {x: "apurado", y: "y", text: "ano", ...(modo === "vantagem" ? {dx: 6} : {dx: 2, dy: -10, stroke: "var(--theme-background-alt)", strokeWidth: 3, paintOrder: "stroke"}), textAnchor: "start", fill: TINTA, fontWeight: 600, ...faceta}),
       Plot.tip(
         linhas,
         Plot.pointer({
@@ -675,12 +762,20 @@ export function graficoPesquisas(dados, {turno, width = 640, nomes, destaque = n
   const destacadas = destaque ? longas.filter((d) => d.p.instituto === destaque) : longas;
   const apagadas = destaque ? longas.filter((d) => d.p.instituto !== destaque) : [];
   const estreito = width < 560;
+  const marginRight = estreito ? 56 : 150;
+  const fim = new Date(eleicao.getTime() + 2 * 864e5);
+  // Antes do resultado, o rótulo diz que o número é o da tendência, se couber até a borda: na margem e no trecho do eixo
+  // depois do fim da tendência (curto no período do ano eleitoral)
+  const dx = aposLosangos ? 12 : 8;
+  const espaco = (d) => marginRight - dx + ((fim - d.data) / (fim - inicio)) * (width - 48 - marginRight);
+  const rotulo = (d, sufixo) => (estreito ? "" : `${nomes[d.campo]}  `) + pct(d.valor, 1) + sufixo;
+  const sufixo = !resultado.length && rotulos.every((d) => largura(rotulo(d, " (tendência)")) <= espaco(d)) ? " (tendência)" : "";
   return Plot.plot({
     width,
     height: 380,
     marginLeft: 48,
-    marginRight: estreito ? 56 : 150,
-    x: {type: "utc", domain: [inicio, new Date(eleicao.getTime() + 2 * 864e5)], label: null, tickFormat: mesEixo},
+    marginRight,
+    x: {type: "utc", domain: [inicio, fim], label: null, tickFormat: mesEixo},
     y: {label: "% dos votos válidos", labelArrow: "none", grid: true, nice: true, tickFormat: (v) => v + "%"},
     color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
     marks: [
@@ -695,7 +790,7 @@ export function graficoPesquisas(dados, {turno, width = 640, nomes, destaque = n
         : Plot.line(tendencia, {x: "data", y: "valor", z: "trecho", stroke: "campo", strokeWidth: 2.5}),
       Plot.dot(urnas1, {x: "data", y: "valor", symbol: "diamond", r: 6, fill: FUNDO, stroke: "campo", strokeWidth: 2}),
       Plot.dot(resultado, {x: "data", y: "valor", symbol: "diamond", r: 7, fill: "campo", stroke: FUNDO, strokeWidth: 1.5}),
-      ...rotulosFinais(rotulos, "data", (d) => (estreito ? "" : `${nomes[d.campo]}  `) + pct(d.valor, 1) + (resultado.length ? "" : " (tendência)"), aposLosangos ? 12 : 8),
+      ...rotulosFinais(rotulos, "data", (d) => rotulo(d, sufixo), dx),
       Plot.tip([...longas, ...urnas1], Plot.pointer({x: "data", y: "valor", title: (d) => (d.p ? dicaPesquisa(d.p, nomes) : dicaPrimeiroTurno(t, nomes))}))
     ]
   });
@@ -745,7 +840,7 @@ export function ultimasPesquisas(t) {
 export function tabelaUltimas(t, nomes, linhas = t.ultimas) {
   const erro = (v) => (v == null ? "–" : pp(v, 1));
   const media = t.media_semana_final;
-  return html`<table>
+  return html`<div class="tabela"><table>
     <thead><tr><th>Instituto</th><th>Fim do campo</th>
       <th style="text-align:right">${nomes.petismo}</th><th style="text-align:right">${nomes.bolsonarismo}</th>
       ${t.resultado ? html`<th style="text-align:right">Erro na vantagem</th>` : ""}</tr></thead>
@@ -760,7 +855,7 @@ export function tabelaUltimas(t, nomes, linhas = t.ultimas) {
       ${t.resultado ? html`<tr style="font-weight:600"><td>Resultado das urnas</td><td></td>
         <td style="text-align:right">${pct(t.resultado.petismo, 1)}</td><td style="text-align:right">${pct(t.resultado.bolsonarismo, 1)}</td><td></td></tr>` : ""}
     </tbody>
-  </table>`;
+  </table></div>`;
 }
 
 // ---- Projeção do 2º turno (data/projecao.json) ----------------------------------------------
@@ -800,12 +895,18 @@ export function graficoProjecao(proj, {width = 640, nomes, pesquisas = null, hei
   const ultimo = serie.at(-1);
   const fins = afastar(urnas.length ? urnas : CAMPOS.map((c) => ({campo: c, dia: ultimo.dia, valor: lados(ultimo)[c].valor})));
   const estreito = width < 560;
+  const rotulo = (d) => (estreito ? "" : `${nomes[d.campo]}  `) + pct(d.valor, 1) + (urnas.length ? " (urnas)" : "");
+  // a margem da direita cresce para caber o rótulo do fim, mais longo com "(urnas)", depois da eleição
+  const marginRight = Math.max(estreito ? 56 : 150, ...fins.map((d) => largura(rotulo(d)) + 12));
+  const [x0, x1] = [new Date(+primeiro - 864e5), new Date(+eleicao + 864e5)];
+  // no eixo, uma data por semana; se elas não cabem, só a do 1º e a do 2º turno
+  const semana = ((7 * 864e5) / (x1 - x0)) * (width - 48 - marginRight);
   return Plot.plot({
     width,
     height,
     marginLeft: 48,
-    marginRight: estreito ? 56 : 150,
-    x: {type: "utc", domain: [new Date(+primeiro - 864e5), new Date(+eleicao + 864e5)], label: null, tickFormat: mesEixo, ticks: estreito ? 4 : 7},
+    marginRight,
+    x: {type: "utc", domain: [x0, x1], label: null, tickFormat: mesEixo, ticks: semana < 34 ? [primeiro, eleicao] : estreito ? 4 : 7},
     y: {label: "% dos votos válidos", labelArrow: "none", grid: true, nice: true, tickFormat: (v) => v + "%"},
     color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
     marks: [
@@ -816,7 +917,7 @@ export function graficoProjecao(proj, {width = 640, nomes, pesquisas = null, hei
       Plot.dot(pontos, {x: "dia", y: "valor", fill: "campo", r: 2.5, fillOpacity: 0.45}),
       Plot.line(linhas, {x: "dia", y: "valor", z: "campo", stroke: "campo", strokeWidth: 2.5, curve: "step-after"}),
       Plot.dot(urnas, {x: "dia", y: "valor", symbol: "diamond", r: 7, fill: "campo", stroke: FUNDO, strokeWidth: 1.5}),
-      ...rotulosFinais(fins, "dia", (d) => (estreito ? "" : `${nomes[d.campo]}  `) + pct(d.valor, 1) + (urnas.length ? " (urnas)" : "")),
+      ...rotulosFinais(fins, "dia", rotulo),
       Plot.ruleX(serie, Plot.pointerX({x: "dia", stroke: TINTA_FRACA})),
       Plot.tip(serie, Plot.pointerX({x: "dia", y: (d) => Math.max(d.petismo, 100 - d.petismo), title: (d) => dicaProjecao(d, nomes)}))
     ]
@@ -841,7 +942,7 @@ export function graficoCenarios(d, {width = 640, nomes}) {
     width,
     height: estreito ? 236 : 220,
     marginTop: estreito ? 44 : 28,
-    x: {domain: [-limite, limite], label: "Diferença entre os dois, em pontos dos votos válidos", labelArrow: "none", tickFormat: (v) => (v === 0 ? "empate" : `+${Math.abs(v)}`)},
+    x: {domain: [-limite, limite], label: caber(width - 10, ["Diferença entre os dois, em pontos dos votos válidos", "Diferença, em pontos dos votos válidos"]), labelArrow: "none", tickFormat: (v) => (v === 0 ? "empate" : `+${Math.abs(v)}`)},
     y: {axis: null},
     color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
     marks: [
@@ -875,7 +976,7 @@ export function graficoLugares(proj, {nivel = "ufs", width = 640, nomes}) {
     width,
     height: (nivel === "ufs" ? 18 : 28) * dados.length + 48,
     marginLeft: nivel === "ufs" ? 36 : 96,
-    x: {domain: [Math.floor(min / 10) * 10, Math.ceil(max / 10) * 10], label: `% de ${nomes.petismo} nos votos válidos (${nomes.bolsonarismo} fica com o restante)`, labelArrow: "none", tickFormat: (v) => v + "%", grid: true},
+    x: {domain: [Math.floor(min / 10) * 10, Math.ceil(max / 10) * 10], label: caber(width - 10, [`% de ${nomes.petismo} nos votos válidos (${nomes.bolsonarismo} fica com o restante)`, `% de ${nomes.petismo} nos votos válidos`]), labelArrow: "none", tickFormat: (v) => v + "%", grid: true},
     y: {domain: dados.map((d) => d.lugar), label: null, tickSize: 0},
     color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
     marks: [
@@ -915,7 +1016,7 @@ export function graficoPolarizacao(resumo, {ano, turno, width = 640, nomes}) {
     width,
     height: 260,
     marginLeft: 48,
-    x: {domain: [0, 100], label: `% de ${nomes.bolsonarismo} entre os dois, no local de votação`, labelArrow: "none", tickFormat: (v) => v + "%", ticks: [0, 25, 50, 75, 100]},
+    x: {domain: [0, 100], label: caber(width - 10, [`% de ${nomes.bolsonarismo} entre os dois, no local de votação`, `% de ${nomes.bolsonarismo} no local de votação`]), labelArrow: "none", tickFormat: (v) => v + "%", ticks: [0, 25, 50, 75, 100]},
     y: {label: "Votos", labelArrow: "none", tickFormat: miEixo, grid: true},
     color: {domain: ["petismo", "bolsonarismo"], range: [COR.petismo, COR.bolsonarismo]},
     marks: [
@@ -951,7 +1052,7 @@ export function graficoPolarizacaoAnos(resumo, {turno, width = 640}) {
     width,
     height: 280,
     marginLeft: 44,
-    x: {domain: [0, 100], label: "% do candidato bolsonarista entre os dois, no local de votação", labelArrow: "none", tickFormat: (v) => v + "%", ticks: [0, 25, 50, 75, 100]},
+    x: {domain: [0, 100], label: caber(width - 10, ["% do candidato bolsonarista entre os dois, no local de votação", "% do candidato bolsonarista no local de votação", "% do bolsonarista no local"]), labelArrow: "none", tickFormat: (v) => v + "%", ticks: [0, 25, 50, 75, 100]},
     y: {label: "% dos votos dos dois campos", labelArrow: "none", tickFormat: (v) => v + "%", grid: true},
     color: {domain: anos, range: anos.map((a) => `var(--ano-${a})`)},
     marks: [

@@ -127,6 +127,7 @@
 }
 .legenda i {
   display: inline-block;
+  flex: none; /* quando o nome quebra em mais de uma linha, a amostra não encolhe */
   width: 16px;
   height: 0;
   border-top: 2.5px solid currentColor;
@@ -185,6 +186,7 @@
   border: 1px solid var(--theme-foreground-faintest);
   color: var(--theme-foreground-muted);
   vertical-align: middle;
+  white-space: nowrap;
 }
 .selo.estimado {
   border-style: dashed;
@@ -259,6 +261,32 @@
   font-size: 13px;
   color: var(--theme-foreground-muted);
   max-width: 720px;
+}
+
+/* Tabelas: a que não cabe na largura (no celular) rola de lado no seu espaço, em vez de vazar do cartão e da página.
+   Uma sombra na borda mostra que há mais tabela daquele lado: as faixas da cor do fundo ("local") andam com a tabela
+   e cobrem a sombra quando se chega à ponta, ou quando ela cabe inteira. As margens passam da tabela para a caixa em
+   volta, que é quem fica entre os parágrafos. */
+.tabela {
+  --fundo-tabela: var(--theme-background);
+  --sombra-tabela: color-mix(in srgb, var(--theme-foreground) 22%, transparent);
+  margin: 1rem 0;
+  overflow-x: auto;
+  background:
+    linear-gradient(to right, var(--fundo-tabela) 40%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--fundo-tabela) 40%, transparent) right / 24px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--sombra-tabela), transparent) left / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--sombra-tabela), transparent) right / 10px 100% no-repeat scroll;
+}
+.card .tabela {
+  --fundo-tabela: var(--theme-background-alt);
+}
+.tabela > table {
+  margin: 0;
+}
+h2 + .tabela,
+h3 + .tabela {
+  margin-top: 0;
 }
 
 /* Títulos padrão das caixas de destaque (o Framework os escreve em inglês, via CSS) */
