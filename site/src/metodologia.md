@@ -4,8 +4,8 @@ toc: true
 ---
 
 ```js
-import {COR, graficoLugares, graficoProjecao, legenda} from "./components/graficos.js";
-import {decimal, num, pct, pp} from "./components/formato.js";
+import {COR, graficoCampos, graficoLugares, graficoProjecao, legenda, serieDaNoite} from "./components/graficos.js";
+import {decimal, hora, num, pct, pp} from "./components/formato.js";
 const validacao = FileAttachment("data/validacao_estimativa.json").json();
 const eleicoes = FileAttachment("data/eleicoes.json").json();
 const resumoMapa = FileAttachment("data/mapa/resumo.json").json();
@@ -201,6 +201,62 @@ display(html`<table>
     ${resize((width) => graficoLugares(p, {nivel: "ufs", width, nomes: nomesDe(p.ano)}))}
   </div>`)}
 </div>
+
+## Forecast da apuração
+
+```js
+const fc = FileAttachment("data/forecast.json").json();
+const ap22t2 = FileAttachment("data/apuracao_2022_t2.json").json();
+```
+
+```js
+const fp = fc.parametros;
+const fv22 = fc.validacao["2022"].simples;
+const fv18 = fc.validacao["2018"].simples;
+const noite22 = serieDaNoite(fc.noites["2022"]);
+const nomes22 = {petismo: eleicoes.eleicoes["2022"].petismo.nome, bolsonarismo: eleicoes.eleicoes["2022"].bolsonarismo.nome};
+const noMarco = (v, m) => v.por_marco.find((x) => x.marco === m);
+const virada22 = ap22t2.viradas.at(-1);
+const cedo22 = noite22.find((f) => f.apurado >= 2);
+const quando = (ap, minuto) => hora(new Date(Date.parse(ap.inicio + ":00Z") + minuto * 60000));
+const atributosGanham = ["2018", "2022"].every((a) => fc.validacao[a].atributos.por_marco.every((x, i) => x.erro_medio <= fc.validacao[a].simples.por_marco[i].erro_medio));
+```
+
+Na noite do 2º turno de 2026, o forecast estima o resultado final a cada minuto, com a incerteza dele. A contagem do TSE mostra o que já foi apurado, e isso depende de quais lugares chegaram primeiro: em 2022, ${nomes22.bolsonarismo} liderou a contagem até as ${quando(ap22t2, virada22.t)}, com ${pct(virada22.pct_secoes, 0)} das seções apuradas, e perdeu. O forecast olha também para quem falta apurar.
+
+**O ponto de partida.** Durante a noite, o TSE publica quais seções já chegaram e o resultado de cada município, e o 1º turno de cada seção é conhecido. Cada seção começa com o resultado que a projeção do 2º turno da véspera espera dela: o 1º turno da seção, com os votos dos outros candidatos divididos como na projeção. Com 0% apurado, o forecast é a própria projeção, inclusive na incerteza.
+
+**O que a noite ensina.** Quanto cada lugar se afasta desse ponto de partida — o swing — é aprendido com o que já foi apurado, num modelo hierárquico: um município com metade das seções apuradas diz muito sobre a outra metade; um município sem nada apurado fica com o swing da sua UF, que, sem nada apurado, fica com o da região, e esta com o do país. O comparecimento (quantos votos cada lugar dá em relação ao 1º turno) segue o mesmo modelo. O resultado de cada município é lido a cada poucos minutos, e o total de cada UF, a cada minuto; o que o total da UF tem a mais que os municípios lidos entra também.
+
+**A incerteza.** Cada nível (região, UF, município e seção) tem o seu desvio. Além deles, o que falta apurar não vota exatamente como o que já foi apurado, mesmo descontado o 1º turno de cada seção (em 2022, a parte de cada cidade que chegou por último pendeu um pouco mais para o bolsonarismo): o forecast conta com isso no país, em cada UF e em cada município. Esses desvios crescem com o peso dos outros candidatos no 1º turno — são os votos deles que se dividem de um jeito diferente do esperado — e foram medidos com o resultado verdadeiro de 2018 (outros: ${pct(100 * fp.outros["2018"], 0)} dos válidos no 1º turno) e de 2022 (${pct(100 * fp.outros["2022"], 0)}); em 2026, os outros tiveram ${pct(100 * fp.outros["2026"], 1)}. A faixa de 80% e a chance de vitória vêm de uma conta exata para esse modelo, sem sorteios.
+
+**Como teria se saído.** As noites do 2º turno de 2018 e 2022 foram refeitas seção a seção, só com o que se sabia em cada momento: o resultado de cada município como os coletores o teriam lido, o total de cada UF a cada minuto e a hora de chegada de cada seção. Para não depender da ordem em que o país apura, cada noite foi refeita em várias ordens de chegada (${fv22.ordens} em 2022 e ${fv18.ordens} em 2018): a real; a do 1º turno; cada região por último; as UFs em ordens sorteadas; e as seções embaralhadas.
+
+<div class="card">
+  <h2>A noite do 2º turno de 2022, refeita</h2>
+  <h3>% dos votos válidos já apurados e, tracejado, o resultado final que o forecast previa a cada momento, com a faixa de 80%</h3>
+  ${legenda([{nome: nomes22.petismo, cor: COR.petismo}, {nome: nomes22.bolsonarismo, cor: COR.bolsonarismo}, {nome: "forecast refeito, com a faixa de 80%", cor: "var(--theme-foreground-muted)", estilo: "faixa"}])}
+  ${resize((width) => graficoCampos(ap22t2, {eixo: "hora", medida: "pct", width, nomes: nomes22, previsao: {serie: noite22}}))}
+</div>
+
+<p class="nota">Às ${quando(ap22t2, cedo22.minuto)}, com ${pct(cedo22.apurado, 0)} das seções apuradas, o forecast refeito já dava ${nomes22.petismo} com ${pct(cedo22.petismo, 1)} (80% de chance entre ${pct(cedo22.inf, 1)} e ${pct(cedo22.sup, 1)}); as urnas deram ${pct(fc.noites["2022"].real, 2)}, e a projeção da véspera, ${pct(fc.noites["2022"].projecao, 2)}. A contagem só virou às ${quando(ap22t2, virada22.t)}. A mesma camada aparece na página de 2022.</p>
+
+```js
+display(html`<table>
+  <thead><tr><th style="text-align:right">Seções apuradas</th><th style="text-align:right">2022: erro médio · máximo</th><th style="text-align:right">2022: faixa de 80%</th><th style="text-align:right">2018: erro médio · máximo</th><th style="text-align:right">2018: faixa de 80%</th><th style="text-align:right">Só a contagem, 2022: erro médio</th></tr></thead>
+  <tbody>${[1, 2, 5, 10, 20, 50, 80, 95].map((m) => {
+    const a = noMarco(fv22, m), b = noMarco(fv18, m);
+    return html`<tr><td style="text-align:right">${pct(m, 0)}</td>
+      <td style="text-align:right">${decimal(a.erro_medio, 2)} · ${decimal(a.erro_max, 2)}</td><td style="text-align:right">±${decimal(1.2816 * a.desvio, 2)}</td>
+      <td style="text-align:right">${decimal(b.erro_medio, 2)} · ${decimal(b.erro_max, 2)}</td><td style="text-align:right">±${decimal(1.2816 * b.desvio, 2)}</td>
+      <td style="text-align:right">${decimal(a.contagem_media, 2)}</td></tr>`;
+  })}</tbody>
+</table>`);
+```
+
+<p class="nota">Erro: forecast menos urnas, na parte do candidato do PT nos votos válidos, em pontos percentuais, em todas as ordens de chegada. Faixa: metade do intervalo de 80% (média). O resultado ficou dentro da faixa de 80% em ${pct(100 * fv22.na_faixa, 0)} dos momentos em 2022 e em ${pct(100 * fv18.na_faixa, 0)} em 2018 (de 1% apurado em diante): as faixas são conservadoras, como as da projeção. Em 2018, sem a hora de chegada de cada boletim, a ordem é estimada, e a divulgação só começou às 19h, com quase todas as seções apuradas; o teste de 2018 vale sobretudo pelas ordens inventadas, com os outros candidatos três vezes mais fortes que em 2026. Também foi testado um swing que acompanha atributos do 1º turno de cada seção (a parte dos outros candidatos, a inclinação entre os dois e o comparecimento), aprendido a cada momento nos municípios já apurados: ${atributosGanham ? "ele ganhou do modelo simples e entrou no forecast" : "ele não ganhou do modelo simples nas duas eleições e ficou de fora"}. Relatório completo em <code>docs/validacao_forecast.md</code>.</p>
+
+**O que é estimado.** O forecast é deste estudo, não do TSE, e o resultado oficial é o do TSE. Durante a noite, o mapa mostra em cada município o que o TSE já apurou nele; a divisão desses votos entre os locais de votação do município é estimada pela mesma conta do forecast (o 1º turno de cada local e o swing estimado do município), e aparece com o selo "estimada" até o TSE publicar os boletins de urna.
 
 ## Horários
 

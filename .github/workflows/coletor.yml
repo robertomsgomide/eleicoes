@@ -55,6 +55,19 @@ jobs:
         with:
           enable-cache: true
 
+      # O forecast do resultado final parte do 1º turno de cada seção, que fica no ramo `dados`
+      # (src/eleicoes/ao_vivo/painel.py). Sem ele, a coleta segue, sem o forecast.
+      - name: Seções do 1º turno, para o forecast
+        run: |
+          arq=dados/processado/tse/secoes/2026_t1.parquet
+          mkdir -p "$(dirname "$arq")"
+          if git fetch -q --depth 1 origin dados && git show "FETCH_HEAD:$arq" > "$arq"; then
+            ls -l "$arq"
+          else
+            rm -f "$arq"
+            echo "::warning::Sem as seções do 1º turno: a coleta segue sem o forecast"
+          fi
+
       - name: Coleta
         run: >-
           uv run --frozen --no-dev eleicoes coletar ${{ inputs.coletor }}

@@ -35,9 +35,11 @@ inteiro, também com um commit só.
 ## Na nuvem: a noite do 2º turno (ramos `ao-vivo-a`, `-b` e `-c`)
 
 Durante a apuração de 25/10, cada um dos três coletores (`.github/workflows/apuracao.yml`) grava no seu ramo, em
-pedaços que só se acrescentam (formato em `src/eleicoes/ao_vivo/coletor.py`), e mantém lá um `dados.json` com a
-apuração reconstruída minuto a minuto, para acompanhar a noite. No fim, `uv run eleicoes juntar` junta os três em
-`bruto/ao_vivo/ele2026-6258/`, com um commit no `main`:
+pedaços que só se acrescentam (formato em `src/eleicoes/ao_vivo/coletor.py`), e mantém lá o que a página de 2026 lê
+(`src/eleicoes/ao_vivo/painel.py`): `dados.json` (a apuração com as leituras oficiais do país e das UFs, o forecast do
+resultado final e o histórico dele na noite) e `mapa.json` (o apurado e o swing estimado de cada município). Para o
+forecast, o job copia do ramo `dados` as seções do 1º turno (`processado/tse/secoes/2026_t1.parquet`). No fim,
+`uv run eleicoes juntar` junta os três em `bruto/ao_vivo/ele2026-6258/`, com um commit no `main`:
 
 - `leituras_oficiais.json`: cada atualização do total do país (o mesmo formato do 1º turno, com mais totais);
 - `leituras_ufs.json`: idem, de cada UF e do exterior;
@@ -46,5 +48,7 @@ apuração reconstruída minuto a minuto, para acompanhar a noite. No fim, `uv r
   reescreve esses horários depois da apuração);
 - `final/` e `historico_estimado.*`, como no 1º turno, e `coleta.json`, com os jobs de cada coletor.
 
-Depois de juntados, os ramos `ao-vivo-*` podem ser apagados. O ensaio (push no ramo `ensaio-apuracao`) grava nos
-ramos `ensaio-a`, `-b`, `-c` e junta no `ensaio-juntado`, que também podem ser apagados.
+Os ramos `ao-vivo-*` só podem ser apagados depois que a página de 2026 deixar de lê-los: até o resultado do 2º turno
+entrar em `site/src/data/resultados.json` (Etapa 7), é deles que vêm a curva da noite, o forecast e o mapa. O ensaio
+(push no ramo `ensaio-apuracao`) grava nos ramos `ensaio-a`, `-b`, `-c` e junta no `ensaio-juntado`, que também podem
+ser apagados.

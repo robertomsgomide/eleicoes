@@ -85,6 +85,7 @@ def baixar(url, etag=None, tentativas=4):
 _cs = {}       # uf -> (etag, seções já processadas)
 _horas = {}    # "dd/mm/aaaa hh:mm" -> datetime (evita milhares de strptime iguais)
 _chegadas = {}  # uf -> [(município, zona, seção, "dd/mm/aaaa hh:mm:ss")] da versão do -cs.json lida nesta rodada
+_agregadas = {}  # uf -> [(uf, município, zona, seção, seção principal)]: as seções agregadas a outra (forecast)
 _erro_cs = {}  # uf -> quando o -cs.json dela deu erro pela última vez
 _municipios = None  # uf -> códigos dos municípios (configuração da eleição), para UFs sem o -cs.json
 _erro_municipios = 0.0  # quando a configuração dos municípios deu erro pela última vez
@@ -101,13 +102,14 @@ def secoes_da_uf(uf):
     d, etag = baixar(url_secoes(uf), etag if antigo else None)
     if d is None:
         return antigo
-    out, chegadas = {}, []
+    out, chegadas, agregadas = {}, [], []
     for abr in d["abr"]:
         for mu in abr["mu"]:
             item = out.setdefault(mu["cd"], [0, collections.Counter()])
             for zona in mu["zon"]:
                 for s in zona["sec"]:
                     if "nsp" in s:
+                        agregadas.append((uf, mu["cd"], zona["cd"], s["ns"], s["nsp"]))
                         continue
                     item[0] += 1
                     if s.get("da") and s.get("ha"):
@@ -119,7 +121,13 @@ def secoes_da_uf(uf):
                         chegadas.append((mu["cd"], zona["cd"], s["ns"], f'{s["da"]} {s["ha"]}'))
     _cs[uf] = (etag, out)
     _chegadas[uf] = chegadas
+    _agregadas[uf] = agregadas
     return out
+
+
+def agregadas():
+    """As seções agregadas a outra, de todas as UFs cujo -cs.json já foi lido."""
+    return [a for uf in sorted(_agregadas) for a in _agregadas[uf]]
 
 
 def _secoes_ou_ultimas(uf):

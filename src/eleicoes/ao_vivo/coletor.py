@@ -21,8 +21,9 @@ O que cada job grava, em <ramo>/<job>/ (cada envio fecha os pedaços abertos; os
   secoes-NNNN.csv          uf,municipio,zona,secao,recebido,visto: cada seção na primeira vez que aparece recebida
   rodadas-NNNN.jsonl       cada leitura do TSE: duração, erro, % totalizado
   job.json                 quem, quando, até quando
-E <ramo>/dados.json, refeito a cada envio, para acompanhar a noite: a apuração reconstruída minuto a minuto
-(historico.reconstruir) e as leituras oficiais do país.
+E, refeitos a cada envio, o que o site lê para acompanhar a noite (painel.py): <ramo>/dados.json (a apuração com as
+leituras oficiais do país e das UFs e o forecast do resultado final) e <ramo>/mapa.json (o apurado e o swing estimado
+de cada município).
 """
 import concurrent.futures as cf
 import datetime as dt
@@ -36,6 +37,7 @@ import time
 import urllib.error
 
 from eleicoes.ao_vivo import historico as H
+from eleicoes.ao_vivo import painel as P
 from eleicoes.formato_tse import candidatos, num
 
 AV = H.AV
@@ -238,6 +240,11 @@ class Coletor:
         self.vistas = set()   # seções já gravadas neste ramo ("uf,municipio,zona,secao")
         self.br = {}          # h -> leitura do país
         self.ufs = set()      # (abr, h) das leituras de UF já gravadas
+        self.leituras_uf = {} # abr -> [leituras da UF], para a apuração por região no dados.json
+        self.chegadas = []    # seções vistas desde a última conta do forecast: (uf, municipio, zona, secao, recebido)
+        self.previsor = None  # o forecast (painel.Previsor), montado no primeiro envio
+        self.sem_previsor = False
+        self.previsoes = []   # o histórico do forecast que um job anterior deixou no dados.json
         self.mun = {}         # (uf, municipio) -> último registro gravado
         self.etags = {}       # uf -> etag do arquivo de resultado da UF
         self.erro_uf = {}     # uf -> quando o arquivo de resultado dela deu erro pela última vez
@@ -251,13 +258,22 @@ class Coletor:
         pastas = [self.raiz]
         for l in registros(pastas, "leituras_br"):
             self.br[l["h"]] = l
-        self.ufs = {(l["abr"], l["h"]) for l in registros(pastas, "leituras_uf")}
+        for l in registros(pastas, "leituras_uf"):
+            if (l["abr"], l["h"]) not in self.ufs:
+                self.ufs.add((l["abr"], l["h"]))
+                self.leituras_uf.setdefault(l["abr"], []).append(l)
         for r in registros(pastas, "municipios"):
             antigo = self.mun.get((r["uf"], r["mu"]))
             if antigo is None or r["h"] >= antigo["h"]:
                 self.mun[(r["uf"], r["mu"])] = r
-        self.vistas = {",".join(s[:4]) for s in registros(pastas, "secoes")}
+        for s in registros(pastas, "secoes"):
+            self.vistas.add(",".join(s[:4]))
+            self.chegadas.append(s[:5])
         H.iniciar_municipios({k: resumo_do_registro(r) for k, r in self.mun.items()})
+        try:
+            self.previsoes = json.loads((self.raiz / "dados.json").read_text("utf-8")).get("previsoes") or []
+        except (OSError, ValueError):
+            self.previsoes = []
         if self.br or self.vistas:
             self.log(f"Retomando o ramo {self.ramo}: {len(self.br)} leituras do país, {len(self.mun):,} municípios e "
                      f"{len(self.vistas):,} seções já gravados.".replace(",", "."))
@@ -298,6 +314,7 @@ class Coletor:
                     self.vistas.add(chave)
                     novas.append((uf, mu, zona, secao, recebido, iso(visto)))
         self.grav.secoes(novas)
+        self.chegadas.extend(s[:5] for s in novas)
 
         municipios = []
         for uf, mu in c["mun_novos"]:
@@ -318,6 +335,8 @@ class Coletor:
         docs, erros_uf = self._ufs()
         ufs = [l for l in (leitura(d, visto) for d in docs) if l and (l["abr"], l["h"]) not in self.ufs]
         self.ufs.update((l["abr"], l["h"]) for l in ufs)
+        for l in ufs:
+            self.leituras_uf.setdefault(l["abr"], []).append(l)
         self.grav.json("leituras_uf", *ufs)
 
         recebidas = sum(sum(ch.values()) for m in c["secoes"].values() for _, ch in m.values())
@@ -335,19 +354,44 @@ class Coletor:
                  f"{c['baixados']} municípios · {len(ufs)} UFs".replace(",", ".")
                  + "".join(f" · {a}" for a in avisos if a))
 
+    def prever(self):
+        """O forecast agora (painel.Previsor), ou None. Na primeira vez, monta o prior (alguns segundos)."""
+        if self.previsor is None and not self.sem_previsor:
+            try:
+                self.previsor = P.Previsor.carregar(AV, H.agregadas(), log=self.log)
+            except Exception as e:  # sem o forecast, a coleta segue
+                self.log(f"   forecast indisponível: {e!r}")
+            if self.previsor is None:
+                self.sem_previsor = True
+            else:
+                self.previsor.historico = list(self.previsoes)
+        if self.previsor is None:
+            self.chegadas = []
+            return None
+        self.previsor.chegou(self.chegadas)
+        self.chegadas = []
+        br = max(self.br.values(), key=lambda l: l["h"]) if self.br else None
+        try:
+            return self.previsor.prever(self.mun, self.leituras_uf, br)
+        except Exception as e:  # o forecast não pode derrubar a coleta
+            self.log(f"   forecast não saiu: {e!r}")
+            return None
+
     def painel(self):
-        """O dados.json: a série minuto a minuto, as leituras oficiais do país, quem coletou e quando."""
-        s = H.reconstruir(self.c, max_cand=4)
-        s["t"] = [t.strftime("%Y-%m-%dT%H:%M") for t in s["t"]]
-        s["oficiais"] = [{"h": l["h"], "pst": l["pst"], "cand": l["cand"]} for _, l in sorted(self.br.items())]
-        s["municipios_atrasados"] = self.c["atrasados"]
-        return {"coletor": self.nome, "job": self.job, "atualizado": iso(dt.datetime.now()), "erro": self.erro, "dados": s}
+        """O dados.json (painel.dados): a apuração com as leituras oficiais, o forecast e o histórico dele."""
+        previsao = self.prever()
+        historico = self.previsor.historico if self.previsor else self.previsoes
+        return P.dados(self.nome, self.job, self.erro, AV, list(self.br.values()), self.leituras_uf, previsao, historico)
 
     def enviar(self, final=False):
         if self.c is not None:
             try:
                 (self.raiz / "dados.json").write_text(json.dumps(self.painel(), ensure_ascii=False,
                                                                  separators=(",", ":")), "utf-8")
+                mapa = self.previsor.mapa() if self.previsor else None
+                if mapa:
+                    (self.raiz / "mapa.json").write_text(json.dumps(mapa, ensure_ascii=False, separators=(",", ":")),
+                                                         "utf-8")
             except Exception as e:  # o painel não pode derrubar a coleta
                 self.log(f"   dados.json não saiu: {e!r}")
         self.grav.fechar()

@@ -45,13 +45,13 @@ function cartao(ano, i) {
 ## O que há aqui
 
 - **2018, 2022 e 2026**: o resultado no país e em cada região; o mapa dos votos, com cada local de votação do país; a apuração ao longo da noite, em % dos votos válidos, em votos e na vantagem de um sobre o outro, inclusive o momento exato das viradas; e as pesquisas eleitorais do ano comparadas com as urnas, instituto por instituto.
-- **2º turno de 2026**: a <a href="./2026#projecao-do-2-turno">projeção do resultado</a>, a partir do 1º turno seção por seção e das pesquisas, com a chance de cada candidato, no país, em cada região e em cada estado. Atualizada a cada nova pesquisa.
+- **2º turno de 2026**: a <a href="./2026#projecao-do-2-turno">projeção do resultado</a>, a partir do 1º turno seção por seção e das pesquisas, com a chance de cada candidato, no país, em cada região e em cada estado. Atualizada a cada nova pesquisa. Na noite de 25 de outubro, a partir das 17h, a <a href="./2026">página de 2026</a> acompanha a apuração ao vivo — o resultado, o mapa e a apuração no tempo, atualizados a cada minuto — com o forecast deste estudo para o resultado final.
 - **Comparações**: as três apurações lado a lado, o erro das pesquisas em cada turno e quanto os locais de votação pendem para um lado em cada eleição.
-- **Metodologia**: de onde vêm os números, como foram conferidos com o resultado oficial e com o registro de pesquisas do TSE, como cada local de votação ganhou sua posição no mapa, como a projeção é feita e como teria se saído em 2018 e 2022, e o que é exato ou estimado.
+- **Metodologia**: de onde vêm os números, como foram conferidos com o resultado oficial e com o registro de pesquisas do TSE, como cada local de votação ganhou sua posição no mapa, como a projeção e o forecast da apuração são feitos e como teriam se saído em 2018 e 2022, e o que é exato ou estimado.
 
 ## Em construção
 
-- 2º turno de 2026: acompanhamento ao vivo da apuração, com a previsão de como a curva vai evoluir a partir do que já foi apurado.
+- 2º turno de 2026, depois da apuração: o mapa e a curva exatos, com os boletins de urna, e as comparações com 2018 e 2022.
 
 <style>
 /* O cartão inteiro é um link: o texto fica na cor normal (a cor de link é azul, que aqui é a do bolsonarismo) */

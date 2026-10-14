@@ -27,13 +27,21 @@ export function legenda(itens) {
   )}</div>`;
 }
 
-// Sem valor (um resultado que ainda não saiu), o placar diz "Não divulgado".
-export function placar({nome, cor, valor, votos, detalhe, casas = 2}) {
+// Sem valor (um resultado que ainda não saiu), o placar diz "Não divulgado". previsao: uma linha a mais, embaixo
+// (o forecast, durante a apuração).
+export function placar({nome, cor, valor, votos, detalhe, casas = 2, previsao}) {
   return html`<div class="placar">
     <div class="quem">${cor ? html`<span class="amostra" style="background:${cor}"></span>` : ""}${nome}</div>
     <div class=${valor == null ? "grande pendente" : "grande"}>${valor == null ? "Não divulgado" : pct(valor, casas)}</div>
     <div class="detalhe">${votos != null ? `${num(votos)} votos` : ""}${detalhe ? (votos != null ? " · " : "") + detalhe : ""}</div>
+    ${previsao ? html`<div class="previsao">${previsao}</div>` : ""}
   </div>`;
+}
+
+// O forecast de um campo (f: um lugar do forecast, com a parte do petismo), em "previsto: 50,8% (50,6–51,1%)".
+export function textoPrevisto(f, campo) {
+  const l = lados(f)[campo];
+  return `previsto: ${pct(l.valor, 1)} (${pct(l.inf, 1).replace("%", "")}–${pct(l.sup, 1)})`;
 }
 
 // No lugar de um gráfico ou do mapa, enquanto o turno não tem dados (o 2º turno de 2026 até a eleição).
@@ -45,14 +53,34 @@ export function naoDivulgado(texto, {altura = 240, titulo = "Não divulgado"} = 
 // primeiro; no 1º turno, os outros candidatos; e o comparecimento. Sem resultado (o 2º turno de 2026 até a eleição),
 // os placares dizem "Não divulgado", com `pendente` embaixo, e a ordem dos dois vem em `ordem`. Espaço fixo entre o
 // número e a palavra: em cartões estreitos, a linha não quebra entre os dois.
-export function placaresResultado(b, {turno, nomes, ordem, pendente = ""}) {
+// Durante a apuração (aoVivo), os números são o que já foi apurado, e `previsao` (o forecast do Brasil) entra embaixo
+// de cada campo.
+export function placaresResultado(b, {turno, nomes, ordem, pendente = "", previsao = null, aoVivo = false}) {
   const parte = (c) => b && (100 * b[c]) / b.validos;
   const cartoes = [
-    ...(ordem ?? [...CAMPOS].sort((x, y) => b[y] - b[x])).map((c) => ({nome: nomes[c], cor: COR[c], valor: parte(c), votos: b?.[c], detalhe: b ? "" : pendente})),
+    ...(ordem ?? [...CAMPOS].sort((x, y) => b[y] - b[x])).map((c) => ({nome: nomes[c], cor: COR[c], valor: parte(c), votos: b?.[c], detalhe: b ? "" : pendente, previsao: previsao ? textoPrevisto(previsao, c) : null})),
     ...(turno === 1 ? [{nome: "Outros candidatos", cor: COR.outros, valor: parte("outros"), votos: b?.outros, detalhe: b ? `${b.candidatos.length - 2}\u00a0candidatos` : pendente}] : []),
-    {nome: "Comparecimento", valor: b && (100 * b.comparecimento) / b.aptos, detalhe: b ? `${num(b.comparecimento)} de ${num(b.aptos)}\u00a0eleitores` : pendente}
+    {nome: "Comparecimento", valor: b && (100 * b.comparecimento) / b.aptos, detalhe: b ? `${num(b.comparecimento)} de ${num(b.aptos)}\u00a0eleitores${aoVivo ? " das seções apuradas" : ""}` : pendente}
   ];
   return html`<div class="grid grid-cols-${cartoes.length} placares">${cartoes.map((c) => html`<div class="card">${placar(c)}</div>`)}</div>`;
+}
+
+// A faixa embaixo dos placares durante a apuração: quanto já foi apurado, a chance de vitória pelo forecast e a hora
+// da última atualização do TSE. vivo: o estado de components/aovivo.js.
+export function faixaAoVivo(vivo, {nomes}) {
+  const t = vivo.tse;
+  const p = vivo.previsao?.brasil;
+  const quando = t ? hora(new Date(Date.parse(t.h + "Z"))) : "";
+  const favorito = p ? (p.chance >= 0.5 ? "petismo" : "bolsonarismo") : null;
+  const chance = p ? 100 * (favorito === "petismo" ? p.chance : 1 - p.chance) : null;
+  const apurado = t?.pst ?? 0;
+  const encerrada = vivo.modo === "encerrada";
+  return html`<div class="faixa-ao-vivo" role="status">
+    <span class=${encerrada ? "selo" : "selo ao-vivo"}>${encerrada ? "apuração encerrada" : "ao vivo"}</span>
+    <span class="faixa-apurado"><span class="faixa-barra" aria-hidden="true"><i style=${`width:${Math.min(100, apurado)}%`}></i></span><b>${pct(apurado, 1)}</b> das seções apuradas</span>
+    ${p && !encerrada ? html`<span>Chance de vitória pelo forecast: <b style=${`color:${COR[favorito]}`}>${nomes[favorito]}, ${chance >= 99.95 ? "mais de 99,9%" : pct(chance, chance >= 99 ? 1 : 0)}</b></span>` : ""}
+    ${t ? html`<span class="faixa-hora">TSE, ${quando}</span>` : ""}
+  </div>`;
 }
 
 // Nota sob o resultado: de onde vêm os números do turno (o campo `fonte` de data/resultados.json).
@@ -127,22 +155,124 @@ function escalaX(porHora, x0 = 0, rotulo = "Seções apuradas") {
 
 const piso = (valores) => Math.floor(Math.min(...valores) / 10) * 10;
 
-function dica(d, nomes, {estimada = false} = {}) {
+function dica(d, nomes, {estimada = false, previsto = null} = {}) {
   const p = (100 * d.petismo) / d.validos;
   const b = (100 * d.bolsonarismo) / d.validos;
+  const f = previsto?.(d);
   return [
     `${estimada ? "~" : ""}${hora(d.hora)} · ${pct(d.apurado, 1)} das seções`,
     `${nomes.petismo}: ${pct(p)} · ${num(d.petismo)} votos`,
     `${nomes.bolsonarismo}: ${pct(b)} · ${num(d.bolsonarismo)} votos`,
-    `Diferença: ${pp(p - b, 2)} · ${comSinal(d.petismo - d.bolsonarismo)} votos`
+    `Diferença: ${pp(p - b, 2)} · ${comSinal(d.petismo - d.bolsonarismo)} votos`,
+    ...(f ? [`Forecast para o fim: ${nomes.petismo} ${pct(f.petismo, 1)} (80%: ${pct(f.inf, 1)} a ${pct(f.sup, 1)})`] : [])
   ].join("\n");
 }
 
+// ---- O forecast sobre a curva da apuração --------------------------------------------------------------------------
+// previsao.serie: o resultado final que o forecast previa a cada momento ({minuto, apurado, petismo, inf, sup,
+// chance, vantagem, vinf, vsup, votos_petismo, votos_bolsonarismo}), ao vivo ou refeito com uma noite passada.
+
+function pontosPrevisao(ap, serie, porHora) {
+  return serie
+    .map((f) => ({...f, hora: relogio(ap.inicio, f.minuto)}))
+    .filter((f) => (porHora ? f.minuto <= ap.t999 : f.apurado >= 1));
+}
+
+// O forecast do momento de cada ponto da curva (o último feito até ali), para a dica.
+function forecastNoMomento(pontos, porHora) {
+  const xs = pontos.map((f) => (porHora ? f.minuto : f.apurado));
+  return (d) => {
+    const i = quantosAte(xs, porHora ? d.minuto : d.apurado) - 1;
+    return i >= 0 ? pontos[i] : null;
+  };
+}
+
+// Quantos valores de xs (em ordem) são <= x
+function quantosAte(xs, x) {
+  let lo = 0, hi = xs.length;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (xs[m] <= x) lo = m + 1;
+    else hi = m;
+  }
+  return lo;
+}
+
+function marcasPrevisao(pontos, {x, medida}) {
+  const curve = "step-after";
+  if (medida === "vantagem") {
+    return [
+      Plot.areaY(pontos, {x, y1: "vinf", y2: "vsup", fill: TINTA_SUAVE, fillOpacity: 0.1, curve}),
+      Plot.line(pontos, {x, y: "vantagem", stroke: TINTA, strokeWidth: 1.5, strokeDasharray: "5,4", curve})
+    ];
+  }
+  if (medida === "votos") {
+    const longas = pontos.flatMap((f) => CAMPOS.map((c) => ({...f, campo: c, valor: f[`votos_${c}`]})));
+    return [Plot.line(longas, {x, y: "valor", z: "campo", stroke: "campo", strokeWidth: 1.5, strokeDasharray: "5,4", curve})];
+  }
+  const longas = pontos.flatMap((f) => [
+    {...f, campo: "petismo", valor: f.petismo, baixo: f.inf, alto: f.sup},
+    {...f, campo: "bolsonarismo", valor: 100 - f.petismo, baixo: 100 - f.sup, alto: 100 - f.inf}
+  ]);
+  return [
+    Plot.areaY(longas, {x, y1: "baixo", y2: "alto", z: "campo", fill: "campo", fillOpacity: 0.13, curve}),
+    Plot.line(longas, {x, y: "valor", z: "campo", stroke: "campo", strokeWidth: 1.5, strokeDasharray: "5,4", curve})
+  ];
+}
+
+// No eixo de % apurado, enquanto falta apurar: onde o forecast prevê que cada curva termine (100%), com a faixa de 80%.
+function marcasDestino(pontos, {medida, nomes, apurado}) {
+  const f = pontos.at(-1);
+  if (!f || apurado >= 99) return [];
+  if (medida === "vantagem") {
+    const d = [{x: 100, valor: f.vantagem, inf: f.vinf, sup: f.vsup}];
+    return [
+      Plot.ruleX(d, {x: "x", y1: "inf", y2: "sup", stroke: TINTA_SUAVE, strokeWidth: 3, strokeOpacity: 0.6}),
+      Plot.dot(d, {x: "x", y: "valor", r: 4, fill: TINTA, stroke: FUNDO, strokeWidth: 1.5}),
+      Plot.text(d, {x: "x", y: "valor", dx: -8, textAnchor: "end", text: (x) => `previsto: ${comSinal(x.valor, mi)}`, fill: TINTA, fontSize: 11})
+    ];
+  }
+  const d = medida === "votos"
+    ? CAMPOS.map((c) => ({campo: c, x: 100, valor: f[`votos_${c}`]}))
+    : [{campo: "petismo", x: 100, valor: f.petismo, inf: f.inf, sup: f.sup}, {campo: "bolsonarismo", x: 100, valor: 100 - f.petismo, inf: 100 - f.sup, sup: 100 - f.inf}];
+  const fmt = medida === "votos" ? mi : (v) => pct(v, 1);
+  return [
+    ...(medida === "votos" ? [] : [Plot.ruleX(d, {x: "x", y1: "inf", y2: "sup", stroke: "campo", strokeWidth: 3, strokeOpacity: 0.5})]),
+    Plot.dot(d, {x: "x", y: "valor", r: 4, fill: "campo", stroke: FUNDO, strokeWidth: 1.5}),
+    ...afastar(d).map((x) => Plot.text([x], {x: "x", y: "valor", dy: x.dy, dx: -8, textAnchor: "end", text: () => `${nomes[x.campo]} previsto: ${fmt(x.valor)}`, fill: TINTA, fontSize: 11}))
+  ];
+}
+
+// Uma noite refeita (data/forecast.json, noites[ano]: colunas) no formato de previsao.serie (uma linha por momento).
+export function serieDaNoite(n) {
+  const campos = ["apurado", "petismo", "inf", "sup", "chance", "vantagem", "vinf", "vsup", "votos_petismo", "votos_bolsonarismo"];
+  return n.t.map((t, i) => ({minuto: t, ...Object.fromEntries(campos.map((k) => [k, n[k][i]]))}));
+}
+
+// Durante a apuração: se o forecast dá a vitória, com 80% de chance ou mais, a quem está atrás na contagem.
+export function viradaPrevista(ap, serie) {
+  const f = serie?.at(-1);
+  const b = ap?.regioes.Brasil;
+  if (!f || !b?.petismo.length) return null;
+  const lider = b.petismo.at(-1) >= b.bolsonarismo.at(-1) ? "petismo" : "bolsonarismo";
+  const vencedor = f.chance >= 0.5 ? "petismo" : "bolsonarismo";
+  const chance = vencedor === "petismo" ? f.chance : 1 - f.chance;
+  return vencedor !== lider && chance >= 0.8 ? {vencedor, chance} : null;
+}
+
+function marcaViradaPrevista(v, nomes) {
+  if (!v) return [];
+  const ch = 100 * v.chance;
+  const texto = `Virada prevista: ${nomes[v.vencedor]} deve terminar à frente (chance de ${ch >= 99.95 ? "mais de 99,9%" : pct(ch, ch >= 99 ? 1 : 0)})`;
+  return [Plot.text([texto], {frameAnchor: "top-right", dy: 2, dx: -4, textAnchor: "end", lineAnchor: "top", fill: COR[v.vencedor], fontWeight: 600, fontSize: 12})];
+}
+
 // Afasta dois rótulos finais quando os valores ficam colados.
-function afastar(fins, campo = "valor") {
+// escala: o tamanho do eixo, quando ele vai bem além dos dois valores (os votos previstos para o fim, por exemplo).
+function afastar(fins, campo = "valor", escala = 0) {
   if (fins.length !== 2) return fins.map((d) => ({...d, dy: 0}));
   const [a, b] = fins;
-  const perto = Math.abs(a[campo] - b[campo]) < 0.06 * Math.max(Math.abs(a[campo]), Math.abs(b[campo]), 1e-9);
+  const perto = Math.abs(a[campo] - b[campo]) < 0.06 * Math.max(Math.abs(a[campo]), Math.abs(b[campo]), escala, 1e-9);
   const sobe = a[campo] >= b[campo] ? a : b;
   return fins.map((d) => ({...d, dy: perto ? (d === sobe ? -9 : 9) : 0}));
 }
@@ -169,8 +299,9 @@ function marcaVirada(ap, linhas, x, valor, nomes) {
 
 // ---- Gráficos -------------------------------------------------------------------------
 
-// Os dois campos ao longo da apuração: % dos válidos, votos acumulados ou vantagem em votos.
-export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, nomes}) {
+// Os dois campos ao longo da apuração: % dos válidos, votos acumulados ou vantagem em votos. previsao: {serie} do
+// forecast (tracejado, com a faixa de 80%); aoVivo: durante a apuração, avisa a virada que o forecast prevê.
+export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, nomes, previsao = null, aoVivo = false}) {
   const porHora = eixo === "hora";
   let linhas = pontos(ap);
   if (porHora) linhas = linhas.filter((d) => d.minuto <= ap.t999);
@@ -181,6 +312,12 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
   const estimada = ap.tipo === "estimada";
   const regua = Plot.ruleX(linhas, Plot.pointerX({x, stroke: TINTA_FRACA}));
   const x0 = piso(linhas.map((d) => d.apurado));
+  if (!linhas.length) return naoDivulgado("A curva começa quando 1% das seções estiver apurado.", {altura: 380, titulo: "Daqui a pouco"});
+  const prev = previsao?.serie?.length ? pontosPrevisao(ap, previsao.serie, porHora) : [];
+  const previsto = prev.length ? forecastNoMomento(prev, porHora) : null;
+  const apuradoAgora = (100 * ap.regioes.Brasil.secoes.at(-1)) / (ap.totais.Brasil.secoes || 1);
+  const camada = [...marcasPrevisao(prev, {x, medida}), ...(porHora ? [] : marcasDestino(prev, {medida, nomes, apurado: apuradoAgora}))];
+  const virada = aoVivo ? marcaViradaPrevista(viradaPrevista(ap, previsao?.serie), nomes) : [];
 
   if (medida === "vantagem") {
     const vant = (d) => d.petismo - d.bolsonarismo;
@@ -195,19 +332,22 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
         Plot.areaY(linhas, {x, y: (d) => Math.max(0, vant(d)), fill: COR.petismo, fillOpacity: 0.2, curve}),
         Plot.areaY(linhas, {x, y: (d) => Math.min(0, vant(d)), fill: COR.bolsonarismo, fillOpacity: 0.2, curve}),
         Plot.ruleY([0], {stroke: TINTA_SUAVE}),
+        ...camada,
         Plot.line(linhas, {x, y: vant, stroke: TINTA, strokeWidth: 2, curve, strokeDasharray: tracejado}),
         Plot.text([`↑ ${nomes.petismo} à frente`], {frameAnchor: "top-left", dx: 8, dy: 4, textAnchor: "start", fill: TINTA_SUAVE, fontSize: 12}),
         Plot.text([`↓ ${nomes.bolsonarismo} à frente`], {frameAnchor: "bottom-left", dx: 8, dy: -4, textAnchor: "start", fill: TINTA_SUAVE, fontSize: 12}),
         ...marcaVirada(ap, linhas, x, (d) => vant(d), nomes),
+        ...virada,
         regua,
-        Plot.tip(linhas, Plot.pointerX({x, y: vant, title: (d) => dica(d, nomes, {estimada})}))
+        Plot.tip(linhas, Plot.pointerX({x, y: vant, title: (d) => dica(d, nomes, {estimada, previsto})}))
       ]
     });
   }
 
   const m = MEDIDAS[medida];
   const longas = linhas.flatMap((d) => CAMPOS.map((c) => ({...d, campo: c, valor: m.valor(d, c)})));
-  const fins = afastar(CAMPOS.map((c) => longas.findLast((d) => d.campo === c)));
+  const maiorPrevisto = medida === "votos" ? Math.max(0, ...prev.flatMap((f) => CAMPOS.map((c) => f[`votos_${c}`]))) : 0;
+  const fins = afastar(CAMPOS.map((c) => longas.findLast((d) => d.campo === c)), "valor", maiorPrevisto);
   const estreito = width < 560;
   return Plot.plot({
     width,
@@ -220,11 +360,13 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
     color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
     marks: [
       medida === "pct" ? Plot.ruleY([50], {stroke: TINTA_FRACA, strokeDasharray: "3,3"}) : null,
+      ...camada,
       Plot.line(longas, {x, y: "valor", z: "campo", stroke: "campo", strokeWidth: 2, curve, strokeDasharray: tracejado}),
       ...rotulosFinais(fins, x, (d) => (estreito ? "" : `${nomes[d.campo]}  `) + m.fmt(d.valor)),
       ...marcaVirada(ap, linhas, x, m.valor, nomes),
+      ...virada,
       regua,
-      Plot.tip(linhas, Plot.pointerX({x, y: (d) => Math.max(m.valor(d, "petismo"), m.valor(d, "bolsonarismo")), title: (d) => dica(d, nomes, {estimada})}))
+      Plot.tip(linhas, Plot.pointerX({x, y: (d) => Math.max(m.valor(d, "petismo"), m.valor(d, "bolsonarismo")), title: (d) => dica(d, nomes, {estimada, previsto})}))
     ]
   });
 }
@@ -292,9 +434,11 @@ export function graficoRegioes(ap, {eixo = "hora", modo = "ritmo", width = 640})
   });
 }
 
-// Resultado final por região: barras de 100% com petismo | outros | bolsonarismo.
-export function graficoResultadoRegioes(res, {width = 640, nomes}) {
-  const ordem = ["Brasil", ...REGIOES];
+// Resultado final por região: barras de 100% com petismo | outros | bolsonarismo. Durante a apuração, as barras são o
+// que já foi apurado; `apurado` ({região: %}) vai ao lado do nome e `previsao` ({região: lugar do forecast}) marca,
+// em cada barra, onde o petismo deve terminar (traço) e o intervalo de 80% (linha).
+export function graficoResultadoRegioes(res, {width = 640, nomes, apurado = null, previsao = null}) {
+  const ordem = ["Brasil", ...REGIOES].filter((n) => (n === "Brasil" ? res.Brasil : res.regioes[n])?.validos > 0);
   const dados = (n) => (n === "Brasil" ? res.Brasil : res.regioes[n]);
   const partes = ["petismo", "outros", "bolsonarismo"];
   const rotulo = {...nomes, outros: "Outros candidatos"};
@@ -302,19 +446,27 @@ export function graficoResultadoRegioes(res, {width = 640, nomes}) {
     const d = dados(n);
     return partes.map((c) => ({regiao: n, campo: c, v: (100 * d[c]) / d.validos, votos: d[c]}));
   });
+  const prev = previsao ? ordem.filter((n) => previsao[n]).map((n) => ({regiao: n, ...previsao[n]})) : [];
+  const estreito = width < 480;
+  const nome = (n) => (apurado?.[n] != null ? `${n} · ${pct(apurado[n], 0)}` : n);
   const pilha = (opcoes) => Plot.stackX({x: "v", y: "regiao", z: "campo", order: partes, ...opcoes});
+  const dicaPrevisao = (n) => (previsao?.[n] ? `\nPrevisto para o fim: ${nomes.petismo} ${pct(previsao[n].petismo, 1)} (80%: ${pct(previsao[n].inf, 1)} a ${pct(previsao[n].sup, 1)})` : "");
   return Plot.plot({
     width,
     height: 34 * ordem.length + 44,
-    marginLeft: 104,
-    x: {domain: [0, 100], label: "% dos votos válidos", labelArrow: "none", tickFormat: (v) => v + "%"},
-    y: {domain: ordem, label: null, tickSize: 0},
+    marginLeft: apurado ? (estreito ? 120 : 140) : 104,
+    x: {domain: [0, 100], label: apurado ? "% dos votos válidos já apurados" : "% dos votos válidos", labelArrow: "none", tickFormat: (v) => v + "%"},
+    y: {domain: ordem, label: null, tickSize: 0, tickFormat: nome},
     color: {domain: partes, range: partes.map((c) => COR[c])},
     marks: [
       Plot.barX(linhas, pilha({fill: "campo", insetTop: 5, insetBottom: 5, insetLeft: 1, insetRight: 1})),
       Plot.text(linhas, pilha({text: (d) => (d.campo !== "outros" && d.v >= 9 ? pct(d.v, 1) : ""), fill: "white", fontWeight: 600})),
       Plot.ruleX([50], {stroke: TINTA, strokeOpacity: 0.5, strokeDasharray: "2,2"}),
-      Plot.tip(linhas, Plot.pointer(pilha({title: (d) => `${d.regiao}\n${rotulo[d.campo]}: ${pct(d.v)} · ${num(d.votos)} votos`})))
+      Plot.ruleY(prev, {y: "regiao", x1: "inf", x2: "sup", stroke: FUNDO, strokeWidth: 5, strokeOpacity: 0.85}),
+      Plot.ruleY(prev, {y: "regiao", x1: "inf", x2: "sup", stroke: TINTA, strokeWidth: 1.5}),
+      Plot.tickX(prev, {y: "regiao", x: "petismo", stroke: FUNDO, strokeWidth: 5, insetTop: 3, insetBottom: 3}),
+      Plot.tickX(prev, {y: "regiao", x: "petismo", stroke: TINTA, strokeWidth: 2.5, insetTop: 4, insetBottom: 4}),
+      Plot.tip(linhas, Plot.pointer(pilha({title: (d) => `${nome(d.regiao)}${apurado ? " apurado" : ""}\n${rotulo[d.campo]}: ${pct(d.v)} · ${num(d.votos)} votos${dicaPrevisao(d.regiao)}`})))
     ]
   });
 }
