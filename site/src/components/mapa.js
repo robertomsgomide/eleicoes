@@ -228,6 +228,8 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
   let geracao = null; // {N, x0, x1, y0, y1, turno}
   let hexCache = null;
   let timerPontos = 0;
+  let aoVivo = null; // o mapa.json dos coletores, durante a apuração (aplicarAoVivo)
+  let turnoPedido = turno;
 
   // ---- Dados -----------------------------------------------------------------------------------
 
@@ -340,6 +342,54 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     // Lista da busca
     const opcoes = d3.range(nm).sort((a, b) => d3.ascending(M.nome[a], M.nome[b]));
     lista.replaceChildren(...opcoes.map((j) => html`<option value=${`${M.nome[j]} (${M.uf[j]})`}>`));
+  }
+
+  // ---- Ao vivo ---------------------------------------------------------------------------------
+  // Durante a apuração do 2º turno, cada local recebe a sua parte do que já foi apurado no município, repartido entre
+  // os locais pelo 1º turno: a mesma conta do forecast (os votos dos outros candidatos se dividem pela inclinação do
+  // local, e o swing estimado do município desloca tudo; src/eleicoes/modelos/forecast.py). Os pontos de cada
+  // município somam o que o TSE já apurou nele; a divisão entre os locais é estimada.
+
+  function aplicarAoVivo() {
+    if (!D || !aoVivo || !D.votos[1]) return;
+    const {divisao: dv, municipios: M} = aoVivo;
+    const v1 = D.votos[1];
+    const n = D.n, nm = D.M.codigo.length;
+    const pt = new Float64Array(n), bo = new Float64Array(n);
+    const somaP = new Float64Array(nm), somaB = new Float64Array(nm);
+    const logit = (p) => Math.log(p / (1 - p));
+    const expit = (x) => 1 / (1 + Math.exp(-x));
+    for (let i = 0; i < n; i++) {
+      const m = D.mun[i];
+      const st = M.secoes[m], ts = M.total[m];
+      const p1 = v1.cat[0][i], b1 = v1.cat[1][i], o1 = v1.cat[2][i], V = p1 + b1 + o1;
+      if (!st || !ts || !V) continue;
+      const q = expit(dv.a + dv.inclinacao * logit((p1 + 0.5) / (p1 + b1 + 1)));
+      const p = expit(logit(Math.min(Math.max((p1 + q * o1) / V, 1e-4), 1 - 1e-4)) + (dv.deslocamento || 0) + (M.swing[m] ?? 0));
+      const votos = (V * Math.exp(M.comparecimento[m] ?? 0) * Math.min(st, ts)) / ts;
+      pt[i] = votos * p;
+      bo[i] = votos * (1 - p);
+      somaP[m] += pt[i];
+      somaB[m] += bo[i];
+    }
+    const total = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const m = D.mun[i];
+      if (somaP[m] > 0) pt[i] *= (M.petismo[m] ?? 0) / somaP[m];
+      if (somaB[m] > 0) bo[i] *= (M.bolsonarismo[m] ?? 0) / somaB[m];
+      total[i] = pt[i] + bo[i];
+    }
+    D.votos[2] = {cat: [pt, bo, new Float64Array(n)], total, aoVivo: true};
+    if (!D.turnos.includes(2)) D.turnos.push(2);
+    if (turnoPedido === 2) estado.turno = 2;
+    if (estado.turno === 2) {
+      hexCache = null;
+      geracao = null;
+      if (destaque) mostrarInfo(destaque);
+      atualizarLegenda();
+      gerarPontos();
+      agendar();
+    }
   }
 
   // ---- Cores do tema ---------------------------------------------------------------------------
@@ -742,11 +792,15 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     if (!D) return;
     const nomes = {...nomesCampos, outros: "Outros candidatos"};
     const cats = estado.turno === 1 ? ["petismo", "bolsonarismo", "outros"] : ["petismo", "bolsonarismo"];
+    const vivo = D.votos[estado.turno]?.aoVivo
+      ? html`<div class="mapa-escala">Ao vivo: o que já foi apurado em cada município, repartido entre os locais pelo 1º turno (estimado)</div>`
+      : "";
     if (estado.modo === "pontos") {
       const N = geracao?.N;
       legenda.replaceChildren(
         html`<div class="mapa-legenda-itens">${cats.map((c) => html`<span><i style="background:var(--${c})"></i>${nomes[c]}</span>`)}</div>`,
-        html`<div class="mapa-escala">${N ? `1 ponto = ${N === 1 ? "1 voto" : `${num(N)} votos`}` : ""}</div>`
+        html`<div class="mapa-escala">${N ? `1 ponto = ${N === 1 ? "1 voto" : `${num(N)} votos`}` : ""}</div>`,
+        vivo
       );
     } else {
       legenda.replaceChildren(
@@ -754,7 +808,8 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
         html`<div class="mapa-rampa">${cores.classes.map((cor) => html`<i style="background:${cor}"></i>`)}</div>`,
         html`<div class="mapa-rampa-marcas">${LIMIARES.map((v, k) => html`<span style="left:${(k + 1) * 10}%">${Math.abs(v)}</span>`)}</div>`,
         html`<div class="mapa-rampa-lados"><span>← ${nomesCampos.petismo}</span><span>${nomesCampos.bolsonarismo} →</span></div>`,
-        html`<div class="mapa-escala">Tamanho do hexágono: votos válidos da área</div>`
+        html`<div class="mapa-escala">Tamanho do hexágono: votos válidos da área</div>`,
+        vivo
       );
     }
   }
@@ -786,10 +841,15 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
       const v = [V.cat[0][i], V.cat[1][i], V.cat[2][i]];
       const nome = nomesLocais ? nomesLocais[i] || "Local de votação" : "…";
       const p = D.precisao[i];
+      const vivo = V.aoVivo ? aoVivo.municipios : null;
+      const oficial = vivo && vivo.petismo[m] + vivo.bolsonarismo[m] > 0
+        ? `${D.M.nome[m]}: ${pct((100 * Math.min(vivo.secoes[m], vivo.total[m])) / vivo.total[m], 0)} das seções apuradas; nelas, ${nomesCampos.petismo} ${pct((100 * vivo.petismo[m]) / (vivo.petismo[m] + vivo.bolsonarismo[m]), 1)} (TSE)`
+        : null;
       info.replaceChildren(
         html`<strong>${nome}</strong>`,
-        html`<div class="mapa-info-sub">${D.M.nome[m]} (${D.M.uf[m]}) · ${num(v[0] + v[1] + v[2])} votos válidos</div>`,
+        html`<div class="mapa-info-sub">${D.M.nome[m]} (${D.M.uf[m]}) · ${num(v[0] + v[1] + v[2])} votos válidos${vivo ? " (estimado)" : ""}</div>`,
         linhaCampos(v),
+        ...(oficial ? [html`<div class="mapa-info-nota">${oficial}</div>`] : []),
         ...(PRECISAO[p] ? [html`<div class="mapa-info-nota">${PRECISAO[p]}</div>`] : [])
       );
     } else {
@@ -940,6 +1000,7 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     try {
       const [L, M, T] = await Promise.all([locais.json(), municipios.json(), malha.json()]);
       preparar(L, M, T);
+      aplicarAoVivo();
       lerCores();
       estado.pronto = true;
       aviso.remove();
@@ -971,7 +1032,13 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     agendar();
   });
 
+  // Durante a apuração: o mapa.json mais recente dos coletores (o 2º turno passa a existir no mapa)
+  raiz.aoVivo = (dados) => {
+    aoVivo = dados;
+    aplicarAoVivo();
+  };
   raiz.mostrar = (t) => {
+    turnoPedido = t;
     if (t === estado.turno && (D == null || D.turnos.includes(t))) return;
     estado.turno = D && !D.turnos.includes(t) ? D.turnos.at(-1) : t;
     hexCache = null;
