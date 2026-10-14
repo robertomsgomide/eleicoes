@@ -218,7 +218,9 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     console.warn("Mapa: WebGL indisponível", e);
   }
 
-  const estado = {turno, modo: webgl ? "pontos" : "hex", t: d3.zoomIdentity, W: 0, H: 0, dpr: 1, k0: 1, pronto: false};
+  // segue: o mapa mostra o Brasil inteiro e acompanha a legenda quando ela muda de altura (até alguém aproximar ou
+  // arrastar o mapa)
+  const estado = {turno, modo: webgl ? "pontos" : "hex", t: d3.zoomIdentity, W: 0, H: 0, dpr: 1, k0: 1, pronto: false, segue: true};
   let D = null; // dados preparados
   let cores = null;
   let pedido = 0;
@@ -427,14 +429,29 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     return {W, H: Math.round(Math.max(380, H))};
   }
 
-  // O Brasil inteiro no espaço livre: abaixo da barra de controles e à esquerda dos botões de zoom
+  // O Brasil inteiro no espaço livre: abaixo da barra de controles, à esquerda dos botões de zoom e, num mapa estreito,
+  // acima da legenda, que ali ocupa quase toda a largura (e, com os hexágonos ou os outros candidatos, cobria o Sul)
   function brasilInteiro() {
     const {W, H} = estado;
     const barra = raiz.querySelector(".mapa-barra");
     const topo = Math.min(H * 0.25, barra.offsetTop + barra.offsetHeight + 6);
     const direita = W < 640 ? 48 : 0;
-    const k = (Math.min(W - direita, H - topo - 8) / MUNDO) * 0.96;
-    return d3.zoomIdentity.translate((W - direita - MUNDO * k) / 2, topo + (H - topo - 8 - MUNDO * k) / 2).scale(k);
+    const baixo = W < 640 ? Math.min(H * 0.4, legenda.offsetHeight + 16) : 8;
+    const k = (Math.min(W - direita, H - topo - baixo) / MUNDO) * 0.96;
+    return d3.zoomIdentity.translate((W - direita - MUNDO * k) / 2, topo + (H - topo - baixo - MUNDO * k) / 2).scale(k);
+  }
+
+  // A legenda muda de altura com o modo, o turno e a apuração ao vivo: o Brasil inteiro muda junto, e o mapa, se ainda
+  // o mostra, vai para o novo lugar
+  function acomodarLegenda() {
+    if (!estado.W) return;
+    const casa = brasilInteiro();
+    estado.k0 = casa.k;
+    zoom.scaleExtent([estado.k0 * 0.8, estado.k0 * 6000]);
+    const {t} = estado;
+    if (estado.segue && (Math.abs(t.k - casa.k) > 1e-9 * casa.k || Math.abs(t.x - casa.x) > 0.5 || Math.abs(t.y - casa.y) > 0.5)) {
+      d3.select(cTopo).transition().duration(300).call(zoom.transform, casa);
+    }
   }
 
   function redimensionar() {
@@ -453,7 +470,7 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     const inicial = brasilInteiro();
     estado.k0 = inicial.k;
     zoom.scaleExtent([estado.k0 * 0.8, estado.k0 * 6000]).translateExtent([[-MUNDO * 0.3, -MUNDO * 0.3], [MUNDO * 1.3, MUNDO * 1.3]]);
-    if (!antes) {
+    if (!antes || estado.segue) {
       d3.select(cTopo).call(zoom.transform, inicial);
     } else {
       // mantém o centro e o quanto estava aproximado
@@ -477,7 +494,10 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     .wheelDelta((e) => -e.deltaY * (e.deltaMode === 1 ? 0.05 : e.deltaMode ? 1 : 0.002) * (e.ctrlKey && Math.abs(e.deltaY) < 40 ? 8 : 1.5))
     .on("zoom", (e) => {
       estado.t = e.transform;
-      if (e.sourceEvent) esconderInfo();
+      if (e.sourceEvent) {
+        esconderInfo();
+        estado.segue = false;
+      }
       agendar();
     })
     .on("end", () => agendarPontos());
@@ -797,9 +817,10 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
       : "";
     if (estado.modo === "pontos") {
       const N = geracao?.N;
+      // antes de haver pontos, a linha da escala fica vazia, mas com a altura de sempre: o mapa não pula
       legenda.replaceChildren(
         html`<div class="mapa-legenda-itens">${cats.map((c) => html`<span><i style="background:var(--${c})"></i>${nomes[c]}</span>`)}</div>`,
-        html`<div class="mapa-escala">${N ? `1 ponto = ${N === 1 ? "1 voto" : `${num(N)} votos`}` : ""}</div>`,
+        html`<div class="mapa-escala">${N ? `1 ponto = ${N === 1 ? "1 voto" : `${num(N)} votos`}` : "\u00a0"}</div>`,
         vivo
       );
     } else {
@@ -812,6 +833,7 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
         vivo
       );
     }
+    acomodarLegenda();
   }
 
   function carregarNomes() {
@@ -939,11 +961,16 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
   if (!webgl) for (const o of raiz.querySelectorAll(".mapa-modo button")) o.setAttribute("aria-pressed", String(o.dataset.modo === "hex"));
 
   const sel = d3.select(cTopo);
-  raiz.querySelector('[data-acao="mais"]').addEventListener("click", () => sel.transition().duration(300).call(zoom.scaleBy, 2));
-  raiz.querySelector('[data-acao="menos"]').addEventListener("click", () => sel.transition().duration(300).call(zoom.scaleBy, 0.5));
+  const aproximar = (fator) => {
+    estado.segue = false;
+    sel.transition().duration(300).call(zoom.scaleBy, fator);
+  };
+  raiz.querySelector('[data-acao="mais"]').addEventListener("click", () => aproximar(2));
+  raiz.querySelector('[data-acao="menos"]').addEventListener("click", () => aproximar(0.5));
   raiz.querySelector('[data-acao="brasil"]').addEventListener("click", () => {
     municipioDestacado = null;
     busca.value = "";
+    estado.segue = true;
     sel.transition().duration(600).call(zoom.transform, brasilInteiro());
   });
   raiz.querySelector('[data-acao="tela"]').addEventListener("click", () => {
@@ -991,6 +1018,7 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
     const {W, H} = estado;
     const k = Math.min(estado.k0 * 4000, 0.82 * Math.min(W / (x1 - x0), H / (y1 - y0)));
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    estado.segue = false;
     sel.transition().duration(900).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - cx * k, H / 2 - cy * k).scale(k));
   }
 
@@ -1004,8 +1032,8 @@ export function mapaDeVotos({locais, nomes, malha, municipios, nomesCampos, turn
       lerCores();
       estado.pronto = true;
       aviso.remove();
+      atualizarLegenda(); // antes de medir: num mapa estreito, o Brasil inteiro fica acima dela
       redimensionar();
-      atualizarLegenda();
       gerarPontos();
       agendar();
     } catch (e) {

@@ -62,14 +62,14 @@ const modo = view(Inputs.radio(new Map([["Vantagem do petismo", "vantagem"], ["Q
 ## A vantagem em cada momento da apuração
 
 <div class="card" style="max-width: 760px;">
-  <table>
+  <div class="tabela"><table>
     <thead><tr><th>Eleição</th>${marcos.map((m) => html`<th style="text-align:right">com ${m}%</th>`)}<th style="text-align:right">final</th></tr></thead>
     <tbody>${grupos.map((g) => html`<tr>
-      <td>${g.ano}, ${g.turno}º turno${g.selo ? html` <span class="selo estimado">${g.selo}</span>` : ""}</td>
+      <td><span style="white-space:nowrap">${g.ano}, ${g.turno}º turno</span>${g.selo ? html` <span class="selo estimado">${g.selo}</span>` : ""}</td>
       ${g.valores.map((v) => html`<td style="text-align:right;font-variant-numeric:tabular-nums">${v == null ? "–" : pp(v, 1)}</td>`)}
       <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${pp(g.final, 1)}</td>
     </tr>`)}</tbody>
-  </table>
+  </table></div>
 </div>
 
 <p class="nota">Vantagem do candidato do PT sobre o bolsonarista, em pontos percentuais dos votos válidos, quando o Brasil atingiu cada % de seções apuradas. “–”: a curva ainda não existia nesse ponto (em 2018, a divulgação começou com parte das seções já apurada).</p>
@@ -93,17 +93,17 @@ const pontos = (v) => `${decimal(Math.abs(v), 1)} ${Math.abs(v) < 2 ? "ponto" : 
 ```
 
 <div class="card" style="max-width: 860px;">
-  <table>
+  <div class="tabela"><table>
     <thead><tr><th>Eleição</th><th style="text-align:right">Pesquisas</th><th>Candidato</th>
       <th style="text-align:right">Média da semana final</th><th style="text-align:right">Urnas</th><th style="text-align:right">Erro</th></tr></thead>
     <tbody>${erros.flatMap((e) => [
-      html`<tr><td rowspan="2">${e.ano}, ${e.turno}º turno</td><td rowspan="2" style="text-align:right">${e.n}</td>
+      html`<tr><td rowspan="2" style="white-space:nowrap">${e.ano}, ${e.turno}º turno</td><td rowspan="2" style="text-align:right">${e.n}</td>
         <td>${e.bo}</td><td style="text-align:right">${pct(e.media.bolsonarismo, 1)}</td><td style="text-align:right">${pct(e.resultado.bolsonarismo, 1)}</td>
         <td style="text-align:right;font-weight:600">${pp(e.erro_bo, 1)}</td></tr>`,
       html`<tr><td>${e.pt}</td><td style="text-align:right">${pct(e.media.petismo, 1)}</td><td style="text-align:right">${pct(e.resultado.petismo, 1)}</td>
         <td style="text-align:right;font-weight:600">${pp(e.erro_pt, 1)}</td></tr>`
     ])}</tbody>
-  </table>
+  </table></div>
 </div>
 
 <p class="nota">Média simples das pesquisas com fim do campo na semana anterior a cada turno, em % dos votos válidos. Erro: média menos resultado; negativo quer dizer que as pesquisas deram menos do que as urnas.</p>
@@ -134,12 +134,12 @@ const linhasLocais = Object.entries(resumoMapa.anos).flatMap(([ano, a]) => Objec
 </div>
 
 <div class="card" style="max-width: 860px;">
-  <table>
+  <div class="tabela"><table>
     <thead><tr><th>Eleição</th><th style="text-align:right">Votos em locais com 60% ou mais para um campo</th><th style="text-align:right">Com 70% ou mais</th><th style="text-align:right">Locais vencidos pelo petismo</th><th style="text-align:right">Pelo bolsonarismo</th></tr></thead>
     <tbody>${linhasLocais.map((l) => html`<tr><td style="white-space:nowrap">${l.ano}, ${l.turno}º turno</td>
       <td style="text-align:right">${pct(100 * l.acima_60, 0)}</td><td style="text-align:right">${pct(100 * l.acima_70, 0)}</td>
       <td style="text-align:right">${num(l.locais_petismo)}</td><td style="text-align:right">${num(l.locais_bolsonarismo)}</td></tr>`)}</tbody>
-  </table>
+  </table></div>
 </div>
 
 <p class="nota">Locais de votação no Brasil (o exterior fica de fora). A % de cada local considera só os votos dos dois campos estudados; no 1º turno, os outros candidatos não entram na conta. Um local "vencido" teve mais votos de um campo do que do outro. Os mapas de cada ano estão nas páginas <a href="./2018#mapa">2018</a>, <a href="./2022#mapa">2022</a> e <a href="./2026#mapa">2026</a>.</p>

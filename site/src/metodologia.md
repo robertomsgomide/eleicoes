@@ -22,7 +22,7 @@ Em cada eleição, o **petismo** é o candidato do PT e o **bolsonarismo**, o ca
 
 ```js
 const linhas = Object.entries(eleicoes.eleicoes).map(([ano, e]) => html`<tr><td>${ano}</td><td>${e.petismo.nome} (${e.petismo.partido}, ${e.petismo.numero})</td><td>${e.bolsonarismo.nome} (${e.bolsonarismo.partido}, ${e.bolsonarismo.numero})</td></tr>`);
-display(html`<table><thead><tr><th>Ano</th><th>Petismo</th><th>Bolsonarismo</th></tr></thead><tbody>${linhas}</tbody></table>`);
+display(html`<div class="tabela"><table><thead><tr><th>Ano</th><th>Petismo</th><th>Bolsonarismo</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
 ```
 
 Os demais candidatos aparecem como "outros". Como nos resultados do TSE, os percentuais são calculados sobre os **votos válidos**, sem brancos e nulos.
@@ -56,16 +56,16 @@ const erroCampo = (v, k) => Math.max(v.erro_pct_validos.petismo[k], v.erro_pct_v
 ```
 
 ```js
-display(html`<table>
+display(html`<div class="tabela"><table>
   <thead><tr><th>Curva estimada</th><th>Atrasos usados</th><th style="text-align:right">Participação de cada candidato: erro médio · máximo</th><th style="text-align:right">% apurado em cada horário: erro médio · máximo</th></tr></thead>
   <tbody>${validacao.map((v) => {
     const media = Math.max(v.erro_pct_validos.petismo.media, v.erro_pct_validos.bolsonarismo.media);
     const max = Math.max(v.erro_pct_validos.petismo.max, v.erro_pct_validos.bolsonarismo.max);
     return html`<tr><td>${v.alvo}</td><td>${v.referencia}</td>
-      <td style="text-align:right">${decimal(media, 2)} · ${decimal(max, 2)} p.p.</td>
-      <td style="text-align:right">${decimal(v.erro_pct_apurado.media, 1)} · ${decimal(v.erro_pct_apurado.max, 1)} pontos</td></tr>`;
+      <td style="text-align:right;white-space:nowrap">${decimal(media, 2)} · ${decimal(max, 2)} p.p.</td>
+      <td style="text-align:right;white-space:nowrap">${decimal(v.erro_pct_apurado.media, 1)} · ${decimal(v.erro_pct_apurado.max, 1)} pontos</td></tr>`;
   })}</tbody>
-</table>`);
+</table></div>`);
 ```
 
 A participação de cada candidato ao longo do % apurado é bem reproduzida: a **ordem** em que as seções chegam se repete de uma eleição para outra. O **relógio** não: o 2º turno transmite os boletins muito mais rápido que o 1º, então o % apurado em cada horário erra bastante entre turnos. ${teste26 ? `De uma eleição para a outra, no mesmo turno, o quadro se repete: no 1º turno de 2026, a participação de cada candidato erra em média ${decimal(erroCampo(teste26, "media"), 1)} ponto (no máximo ${decimal(erroCampo(teste26, "max"), 1)}), e o % apurado em cada horário, ${decimal(teste26.erro_pct_apurado.media, 0)} pontos em média (no máximo ${decimal(teste26.erro_pct_apurado.max, 0)}). Por isso, em 2018, o eixo padrão é o % apurado.` : ""}
@@ -89,12 +89,12 @@ const parteEleitorado = (a, n) => {
   const total = Object.values(m).reduce((s, v) => s + v.eleitores, 0);
   const v = m[n]?.eleitores ?? 0;
   if (!v) return "–";
-  return v / total < 0.0001 ? "< 0,01%" : pct((100 * v) / total, v / total < 0.001 ? 2 : 1);
+  return v / total < 0.0001 ? "<\u00a00,01%" : pct((100 * v) / total, v / total < 0.001 ? 2 : 1);
 };
-display(html`<table>
+display(html`<div class="tabela"><table>
   <thead><tr><th>Posição do local de votação</th>${anosMapa.map((a) => html`<th style="text-align:right">${a}</th>`)}</tr></thead>
-  <tbody>${Object.entries(resumoMapa.metodos).map(([n, m]) => html`<tr><td>${n}. ${m.descricao}</td>${anosMapa.map((a) => html`<td style="text-align:right">${parteEleitorado(a, n)}</td>`)}</tr>`)}</tbody>
-</table>`);
+  <tbody>${Object.entries(resumoMapa.metodos).map(([n, m]) => html`<tr><td>${n}.&nbsp;${m.descricao}</td>${anosMapa.map((a) => html`<td style="text-align:right">${parteEleitorado(a, n)}</td>`)}</tr>`)}</tbody>
+</table></div>`);
 ```
 
 <p class="nota">Em % do eleitorado dos locais de votação no Brasil. Os métodos 1 a 3 procuram, nesta ordem: o mesmo local (mesmo município, zona e número) em outra eleição, com nome parecido ou o mesmo endereço; outro local do município com o mesmo nome, sem as palavras genéricas como "escola estadual"; outro local com o mesmo endereço, desde que tenha número. Nos dois últimos, todos os locais com aquele nome ou endereço precisam estar no mesmo lugar. Os métodos 4 a 6 usam a mediana das posições dos outros locais do bairro, da zona eleitoral ou do município; no bairro, só se ele tem nome específico (não "zona rural") e é compacto. O método 7 vale para os poucos municípios sem nenhum local com coordenada válida: um ponto dentro do polígono do município.</p>
@@ -103,13 +103,13 @@ display(html`<table>
 
 ```js
 const v22 = resumoMapa.validacao["2022"];
-const km = (x) => `${decimal(x, x < 1 ? 2 : 1)} km`;
-display(html`<table>
+const km = (x) => `${decimal(x, x < 1 ? 2 : 1)}\u00a0km`;
+display(html`<div class="tabela"><table>
   <thead><tr><th>Método</th><th style="text-align:right">Locais testados</th><th style="text-align:right">Erro mediano</th><th style="text-align:right">90% dos locais até</th><th style="text-align:right">Acima de 1 km</th></tr></thead>
-  <tbody>${Object.entries(v22).map(([n, r]) => html`<tr><td>${n}. ${resumoMapa.metodos[n].descricao}</td>
+  <tbody>${Object.entries(v22).map(([n, r]) => html`<tr><td>${n}.&nbsp;${resumoMapa.metodos[n].descricao}</td>
     <td style="text-align:right">${num(r.n)}</td><td style="text-align:right">${km(r.mediana_km)}</td>
     <td style="text-align:right">${km(r.p90_km)}</td><td style="text-align:right">${pct(100 * r.acima_1km, 1)}</td></tr>`)}</tbody>
-</table>`);
+</table></div>`);
 ```
 
 <p class="nota">Locais de 2022. Em 2018 e em 2026 os números são praticamente os mesmos; os três anos estão no relatório de qualidade dos dados do projeto (<code>docs/qualidade_dados.md</code>).</p>
@@ -151,7 +151,7 @@ A projeção estima o resultado do 2º turno de 2026, em % dos votos válidos, c
 **As pesquisas depois do 1º turno.** A cada dia, entra a tendência das pesquisas de 2º turno com o campo inteiro depois do 1º turno, a mesma reta local da seção de pesquisas (núcleo de ${par.janela_dias} dias), no dia da última pesquisa. As duas estimativas se juntam pela precisão de cada uma. Os desvios usados (em pontos percentuais da parte de cada candidato nos votos válidos):
 
 ```js
-display(html`<table>
+display(html`<div class="tabela"><table>
   <thead><tr><th>Parte da incerteza</th><th style="text-align:right">Desvio</th><th>De onde vem</th></tr></thead>
   <tbody>
     <tr><td>Ponto de partida</td><td style="text-align:right">${decimal(par.desvio_partida, 1)}</td><td>errou ${anosValidados.map((a) => `${pp(projecao.validacao[a].partida, 1)} em ${a}`).join(" e ")}; com duas eleições, um valor maior que esses erros</td></tr>
@@ -159,7 +159,7 @@ display(html`<table>
     <tr><td>Erro comum a todas as pesquisas</td><td style="text-align:right">${decimal(par.desvio_vespera, 1)}</td><td>o que a média das pesquisas ainda erra na véspera; não diminui com mais pesquisas</td></tr>
     <tr><td>Mudança até a eleição</td><td style="text-align:right">${decimal(par.desvio_deriva, 1)} por raiz de dia</td><td>quanto a opinião ainda pode mudar entre a última pesquisa e a eleição: ${decimal(par.desvio_deriva * Math.sqrt(7), 1)} pontos em uma semana</td></tr>
   </tbody>
-</table>`);
+</table></div>`);
 ```
 
 <p class="nota">Logo depois do 1º turno, com poucas pesquisas, o ponto de partida pesa mais; perto da eleição, com dezenas de pesquisas e pouco tempo para a opinião mudar, as pesquisas pesam quase tudo. A chance de vitória é a probabilidade de passar de 50% numa distribuição normal com a média e o desvio combinados. Com só duas eleições para comparar, os desvios são números redondos, escolhidos para que as faixas de 80% contenham o resultado com folga em 2018 e 2022, e não um ajuste fino.</p>
@@ -181,15 +181,15 @@ const anosProj = anosValidados.map((a) => projecao.anos[a]);
 </div>
 
 ```js
-display(html`<table>
+display(html`<div class="tabela"><table>
   <thead><tr><th>Eleição</th><th style="text-align:right">Ponto de partida</th><th style="text-align:right">Erro médio da projeção</th><th style="text-align:right">Na véspera</th><th style="text-align:right">Dias com as urnas na faixa de 80%</th><th style="text-align:right">Estados na faixa de 80%, na véspera</th></tr></thead>
   <tbody>${anosValidados.map((a) => {
     const v = projecao.validacao[a];
-    return html`<tr><td>${a}, 2º turno</td><td style="text-align:right">${pp(v.partida, 1)}</td><td style="text-align:right">${decimal(v.projecao.medio, 1)} ponto${v.projecao.medio >= 2 ? "s" : ""}</td>
+    return html`<tr><td style="white-space:nowrap">${a}, 2º turno</td><td style="text-align:right">${pp(v.partida, 1)}</td><td style="text-align:right;white-space:nowrap">${decimal(v.projecao.medio, 1)} ponto${v.projecao.medio >= 2 ? "s" : ""}</td>
       <td style="text-align:right">${pp(v.projecao.vespera, 1)}</td><td style="text-align:right">${pct(100 * v.projecao.dias_no_intervalo, 0)}</td>
       <td style="text-align:right">${pct(100 * v.vespera_ufs.no_intervalo, 0)}</td></tr>`;
   })}</tbody>
-</table>`);
+</table></div>`);
 ```
 
 <p class="nota">Erro: projeção menos urnas, na parte do candidato do PT nos votos válidos (positivo: a projeção deu mais ao PT do que as urnas). Em 2018, as pesquisas depois do 1º turno ficaram abaixo de Fernando Haddad até a última semana, e o ponto de partida segurou a projeção perto do resultado; em 2022, as primeiras pesquisas depois do 1º turno ficaram acima de Lula, e a projeção só chegou perto das urnas na reta final. Só com o total nacional verdadeiro, a distribuição pelo país errou, por estado, ${anosValidados.map((a) => `${decimal(projecao.validacao[a].distribuicao.ufs, 1)} ponto${projecao.validacao[a].distribuicao.ufs >= 2 ? "s" : ""} em ${a}`).join(" e ")} (desvio típico), e por município ${anosValidados.map((a) => `${decimal(projecao.validacao[a].distribuicao.municipios, 1)}`).join(" e ")}. Relatório completo em <code>docs/validacao_projecao.md</code>.</p>
@@ -242,16 +242,16 @@ Na noite do 2º turno de 2026, o forecast estima o resultado final a cada minuto
 <p class="nota">Às ${quando(ap22t2, cedo22.minuto)}, com ${pct(cedo22.apurado, 0)} das seções apuradas, o forecast refeito já dava ${nomes22.petismo} com ${pct(cedo22.petismo, 1)} (80% de chance entre ${pct(cedo22.inf, 1)} e ${pct(cedo22.sup, 1)}); as urnas deram ${pct(fc.noites["2022"].real, 2)}, e a projeção da véspera, ${pct(fc.noites["2022"].projecao, 2)}. A contagem só virou às ${quando(ap22t2, virada22.t)}. A mesma camada aparece na página de 2022.</p>
 
 ```js
-display(html`<table>
+display(html`<div class="tabela"><table>
   <thead><tr><th style="text-align:right">Seções apuradas</th><th style="text-align:right">2022: erro médio · máximo</th><th style="text-align:right">2022: faixa de 80%</th><th style="text-align:right">2018: erro médio · máximo</th><th style="text-align:right">2018: faixa de 80%</th><th style="text-align:right">Só a contagem, 2022: erro médio</th></tr></thead>
   <tbody>${[1, 2, 5, 10, 20, 50, 80, 95].map((m) => {
     const a = noMarco(fv22, m), b = noMarco(fv18, m);
     return html`<tr><td style="text-align:right">${pct(m, 0)}</td>
-      <td style="text-align:right">${decimal(a.erro_medio, 2)} · ${decimal(a.erro_max, 2)}</td><td style="text-align:right">±${decimal(1.2816 * a.desvio, 2)}</td>
-      <td style="text-align:right">${decimal(b.erro_medio, 2)} · ${decimal(b.erro_max, 2)}</td><td style="text-align:right">±${decimal(1.2816 * b.desvio, 2)}</td>
+      <td style="text-align:right;white-space:nowrap">${decimal(a.erro_medio, 2)} · ${decimal(a.erro_max, 2)}</td><td style="text-align:right">±${decimal(1.2816 * a.desvio, 2)}</td>
+      <td style="text-align:right;white-space:nowrap">${decimal(b.erro_medio, 2)} · ${decimal(b.erro_max, 2)}</td><td style="text-align:right">±${decimal(1.2816 * b.desvio, 2)}</td>
       <td style="text-align:right">${decimal(a.contagem_media, 2)}</td></tr>`;
   })}</tbody>
-</table>`);
+</table></div>`);
 ```
 
 <p class="nota">Erro: forecast menos urnas, na parte do candidato do PT nos votos válidos, em pontos percentuais, em todas as ordens de chegada. Faixa: metade do intervalo de 80% (média). O resultado ficou dentro da faixa de 80% em ${pct(100 * fv22.na_faixa, 0)} dos momentos em 2022 e em ${pct(100 * fv18.na_faixa, 0)} em 2018 (de 1% apurado em diante): as faixas são conservadoras, como as da projeção. Em 2018, sem a hora de chegada de cada boletim, a ordem é estimada, e a divulgação só começou às 19h, com quase todas as seções apuradas; o teste de 2018 vale sobretudo pelas ordens inventadas, com os outros candidatos três vezes mais fortes que em 2026. Também foi testado um swing que acompanha atributos do 1º turno de cada seção (a parte dos outros candidatos, a inclinação entre os dois e o comparecimento), aprendido a cada momento nos municípios já apurados: ${atributosGanham ? "ele ganhou do modelo simples e entrou no forecast" : "ele não ganhou do modelo simples nas duas eleições e ficou de fora"}. Relatório completo em <code>docs/validacao_forecast.md</code>.</p>
