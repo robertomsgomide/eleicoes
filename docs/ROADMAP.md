@@ -24,7 +24,7 @@ localhost; depois, publicação para o público geral sem depender de um PC liga
 | 3 | Pesquisas ✅ (05/10) | Base de pesquisas dos três anos (Wikipedia em português, revisão guardada, conferida com o registro do TSE); tendência × resultado; erro por instituto; erro das médias em Comparações (`uv run eleicoes pesquisas`) | 100% ligadas ao registro em 2018 e no 1º turno de 2022; ~95% no 2º turno de 2022; ~88% em 2026 (a Futura não aparece no registro nacional de 2026). Lista em [qualidade_pesquisas.md](qualidade_pesquisas.md) |
 | 4 | Mapa de pontos ✅ (05/10; 2º turno de 2026 depois do dia 25) | Seção "Mapa" em cada ano: pontos (WebGL; 1 ponto = 500 votos no país até 1 voto na rua), hexágonos de vantagem, busca de município, nome e votos de cada local ao passar o mouse; gráfico do voto por local e comparação entre os anos. Coordenadas completadas com 2016–2026 e validadas (`docs/qualidade_dados.md`) | 2018 e 2022 nos dois turnos, 2026 no 1º |
 | 5 | Projeção do 2º turno 2026 ✅ (07/10; refeita sozinha a cada pesquisa nova até 25/10) | Total do país: ponto de partida (1º turno das urnas + divisão dos outros candidatos nas pesquisas que perguntaram os dois turnos) combinado com a tendência das pesquisas feitas depois do 1º turno, com incerteza e chance de vitória; distribuição seção a seção para regiões e UFs. Seção "Projeção do 2º turno" em 2026 e na Metodologia; tendência das pesquisas de 2º turno recomeça depois do 1º turno (`uv run eleicoes projecao`). Pesquisas e projeção atualizadas a cada hora, com conferência antes de publicar (`uv run eleicoes atualizar`, no GitHub Actions) | Refeita dia a dia em 2018 e 2022: erro médio de 1,0 e 1,6 p.p., na véspera −0,05 e +0,8 p.p., urnas na faixa de 80% em todos os dias ([validacao_projecao.md](validacao_projecao.md)) |
-| 6 | Forecast dinâmico da apuração (coleta na nuvem ✅ 13/10) | Painel ao vivo novo: grava cada atualização oficial (Brasil e UFs) e prevê a evolução da curva a partir do estado atual. Base: `modelos.projecao.distribuir` dá o resultado esperado de cada seção para qualquer total do país. A gravação roda no GitHub Actions, com três coletores (`.github/workflows/apuracao.yml`; decisões abaixo) | Ensaio completo com a noite de 2022; no ar em 25/10 às 17h |
+| 6 | Forecast dinâmico da apuração (coleta na nuvem ✅ 13/10; forecast e página ao vivo ✅ 14/10) | Na página de 2026, as seções Resultado, Mapa e Apuração no tempo ao vivo, com o forecast do resultado final (`modelos/forecast.py`): o 1º turno de cada seção distribuído como na projeção, mais o swing aprendido com a noite, num modelo hierárquico (país → região → UF → município). Os coletores (`.github/workflows/apuracao.yml`) calculam o forecast; a página lê o TSE direto e os ramos dos coletores (decisões abaixo). `uv run eleicoes forecast` refaz 2018 e 2022; `uv run eleicoes simular` serve a noite de 2022 refeita para conferir a página | Noites de 2018 e 2022 refeitas em 18 ordens de chegada: em 2022, erro médio de 0,16 ponto com 1% apurado e de 0,1 com 10%, resultado na faixa de 80% em 100% dos momentos (2018: 97%) ([validacao_forecast.md](validacao_forecast.md)); no ar em 25/10 às 17h |
 | 7 | Depois de 25/10 | 2º turno de 2026 com os boletins do TSE; aba de comparações; Censo 2022 | — |
 | 8 | Publicação ✅ (08/10; a parte ao vivo fica com a Etapa 6) | Site no GitHub Pages ([robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)), publicado a cada envio para o `main`; `atualizar` a cada hora no GitHub Actions, com os dados que ele usa no ramo `dados` (`.github/workflows/site.yml`) | Site no ar e a rodada automática conferida no GitHub |
 
@@ -84,11 +84,47 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
   de novo 10 min depois, porque o TSE bloqueia IPs que acumulam erros. Em 13/10, o `-cs.json` do 2º turno de Tocantins
   dava 404 (todas as outras UFs saíram em 09/10): uma UF sem esse arquivo não derruba a rodada, e os municípios dela
   são lidos pela configuração da eleição.
-- **Painel e forecast da noite** (resto da Etapa 6): na página de 2026 do site, em outra sessão, lendo o que os
-  coletores gravam (`dados.json` de cada ramo).
+- **Painel e forecast da noite** (resto da Etapa 6): na página de 2026 do site, lendo o que os coletores gravam
+  (`dados.json` e `mapa.json` de cada ramo). Decisões na seção seguinte.
 - **Sem o painel local**: o painel que rodava no computador (`uv run eleicoes ao-vivo`, com o link do cloudflared) e o
   comando `historico`, improvisados na noite do 1º turno, saíram do código. O `historico.py` ficou como a leitura do
   TSE que os coletores usam; o que a noite do 1º turno gravou continua em `dados/bruto/ao_vivo/ele2026-6257`.
+
+## Forecast da apuração e a página ao vivo: decisões (14/10/2026)
+
+- **Sem seção nova**: Resultado, Mapa e Apuração no tempo da página de 2026 se atualizam a cada minuto, nos mesmos
+  componentes de 2018 e 2022. A Projeção do 2º turno fica congelada na véspera: com 0% apurado, o forecast é a própria
+  projeção (inclusive na incerteza).
+- **Resultado**: os mesmos três cartões, com o apurado oficial e, embaixo do número, o previsto pelo forecast; uma faixa
+  com a barra de % apurado, a chance de vitória e a hora da última leitura do TSE; no gráfico por região, o % apurado
+  ao lado do nome e um traço onde o forecast prevê que cada região termine. Com a apuração encerrada, a seção fica como
+  a de 2022.
+- **Apuração no tempo**: a curva com as leituras oficiais do TSE (selo "ao vivo"; a exata, pelos boletins, entra depois)
+  e o histórico do forecast (tracejado, com a faixa de 80%). No eixo de % apurado, o destino previsto em 100%. Se o
+  forecast dá 80% de chance ou mais a quem está atrás na contagem: "virada prevista". O caminho futuro da curva não é
+  desenhado: a ordem de chegada do 1º turno prevê a do 2º com correlação de só 0,64 (0,55 dentro de cada UF).
+- **Mapa**: o mesmo mapa de pontos, enchendo município a município; os pontos de cada município somam o que o TSE já
+  apurou nele, e a divisão entre os locais é estimada pelo 1º turno (selo "estimada").
+- **O modelo, não aprendizado de máquina**: só há duas noites de 2º turno com que treinar, cada uma numa ordem de
+  chegada; o que se aprende vem da própria noite (milhares de municípios). Um swing que acompanha atributos do 1º turno
+  de cada seção (outros candidatos, inclinação, comparecimento) foi testado e não ganhou do modelo simples nas duas
+  eleições: ficou de fora.
+- **Incerteza**: os desvios de região, UF e município, medidos com o resultado verdadeiro, foram proporcionais à parte
+  dos outros candidatos no 1º turno (25% em 2018, 8% em 2022, 7,8% em 2026). Além deles, um desvio para o que falta
+  apurar não votar como o que já foi apurado (em 2022, a parte de cada cidade que chegou por último pendeu para o
+  bolsonarismo), no país, em cada UF e em cada município. Com isso, as faixas de 80% contiveram o resultado em 100% dos
+  momentos em 2022 e em 97% em 2018: conservadoras, como as da projeção.
+- **Onde roda**: nos coletores (Python, a cada envio de 3 min), porque precisa saber quais seções chegaram e dos
+  resultados dos municípios; só com os totais das UFs (o que o navegador conseguiria), o erro seria pior que o da
+  projeção na maior parte da noite. O total oficial de cada UF, lido a cada minuto, completa o que os municípios lidos
+  ainda não têm.
+- **Como a página lê**: o placar direto do TSE, a cada minuto (o mais novo possível), e o `dados.json` e o `mapa.json`
+  do coletor mais recente, por `raw.githubusercontent.com` (o cache de até 5 min é contornado com um parâmetro que muda
+  a cada minuto). Se uma das fontes cair, a outra segura a página. As fontes só podem ser trocadas em `localhost` (para
+  o simulador): no site publicado, ninguém consegue apontar a página para outro lugar.
+- **Ensaio**: `uv run eleicoes simular` serve a noite de 2022 refeita como se fosse a de 2026 (o que os coletores e o TSE
+  serviriam), para conferir a página. Nos testes do navegador embutido, com o painel oculto, o Observable não atualiza
+  (ele espera quadros de animação, que um painel oculto não tem); num navegador comum, sim.
 
 ## O que os dados permitem (verificado em 05/10/2026; 2026 atualizado em 07/10)
 

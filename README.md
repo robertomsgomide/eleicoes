@@ -12,7 +12,8 @@ Fontes: TSE (resultados, boletins de urna, locais de votação, registro de pesq
 (malhas e Censo 2022) e tabelas de pesquisas da Wikipedia (CC BY-SA). Roteiro em
 [docs/ROADMAP.md](docs/ROADMAP.md); dados e tabelas em [docs/dados.md](docs/dados.md); conferência
 contra os totais oficiais em [docs/qualidade_dados.md](docs/qualidade_dados.md); a projeção do 2º turno
-refeita em 2018 e 2022 em [docs/validacao_projecao.md](docs/validacao_projecao.md).
+refeita em 2018 e 2022 em [docs/validacao_projecao.md](docs/validacao_projecao.md); o forecast da apuração, com as
+noites de 2018 e 2022 refeitas, em [docs/validacao_forecast.md](docs/validacao_forecast.md).
 
 ## Como rodar
 
@@ -28,8 +29,10 @@ uv run eleicoes projecao         # projeção do 2º turno e a validação em 20
 uv run eleicoes atualizar        # pesquisa nova na Wikipedia? confere e refaz as pesquisas e a projeção do site
 uv run eleicoes agendar          # o mesmo pelo Agendador de Tarefas do Windows, no próprio computador (--remover apaga)
 uv run eleicoes site             # dados do site -> site/src/data (JSON, versionados no git)
+uv run eleicoes forecast         # forecast da apuração: as noites de 2018 e 2022 refeitas -> site/src/data + docs
 uv run eleicoes coletar a        # um dos três coletores da apuração na nuvem (quem roda é o GitHub Actions; ver abaixo)
 uv run eleicoes juntar <ramos>   # junta o que os coletores gravaram em dados/bruto/ao_vivo/<eleição>
+uv run eleicoes simular          # a noite de 2022 refeita num endereço local, para conferir a página de 2026 (ver abaixo)
 uv run pytest                    # testes
 ```
 
@@ -48,8 +51,23 @@ sem depender de nenhum computador ligado:
   defasadas de 1h53: enquanto um troca, os outros dois seguem lendo;
 - o GitHub pula muitas rodadas agendadas, então há uma a cada 10 min no dia 25, a partir das 10h; a primeira espera
   até as 15h30 e libera os coletores, e as seguintes só entram se ela cair antes do fim;
+- a cada envio, cada coletor refaz também o que o site lê na noite: `dados.json` (a apuração com as leituras oficiais do
+  país e das UFs, o forecast do resultado final e o histórico dele) e `mapa.json` (o apurado e o swing estimado de cada
+  município) — [src/eleicoes/ao_vivo/painel.py](src/eleicoes/ao_vivo/painel.py). O forecast parte do 1º turno de cada
+  seção, que o job copia do ramo `dados`;
 - 1 h depois de o TSE fechar a totalização (ou às 6h de 26/10, no máximo), o job "Junta as gravações" junta os três
   ramos em `dados/bruto/ao_vivo/ele2026-6258` e faz o commit no `main`.
+
+A página de 2026 lê, a cada minuto a partir das 16h30 de 25/10, o placar direto do TSE (país e UFs) e o `dados.json`
+e o `mapa.json` do coletor mais recente (`raw.githubusercontent.com`, ramos `ao-vivo-*`); se uma das fontes cair, a
+outra segura a página ([site/src/components/aovivo.js](site/src/components/aovivo.js)). Como o forecast funciona e
+como foi testado: Metodologia do site e [src/eleicoes/modelos/forecast.py](src/eleicoes/modelos/forecast.py).
+
+Para conferir a página sem esperar o dia 25: `uv run eleicoes simular` refaz a noite de 2022 (com os nomes de 2026)
+e serve, em `http://127.0.0.1:8765`, o que os coletores e o TSE serviriam; com o site em `npm run dev`, abra
+`http://localhost:3000/2026?ao-vivo=http://127.0.0.1:8765/ramo-{c}/&tse=http://127.0.0.1:8765/tse/`. O relógio da noite
+anda 10 vezes mais rápido (`--velocidade`) a partir das 17h (`--inicio`, em minutos); `/relogio?t=<minuto>` no
+simulador põe a noite num minuto. Essas trocas de fonte só valem em `localhost`.
 
 Para ver a coleta funcionando antes: um push no ramo `ensaio-apuracao` (ou "Run workflow" com "ensaio") roda o mesmo
 esquema por 30 min contra os arquivos do 1º turno, com trocas de job a cada 12 min. "Run workflow" sem "ensaio" liga a
@@ -91,11 +109,12 @@ npm run build      # site estático em site/dist, sem nenhuma dependência exter
 .github/workflows/     publicação do site no GitHub Pages, atualização a cada hora e a coleta da apuração (GitHub Actions)
 config/eleicoes.toml   anos, turnos, códigos do TSE, candidatos e cores de cada campo
 src/eleicoes/          o código (pacote Python)
-  ao_vivo/             a coleta da apuração na nuvem (coletor.py, juntar.py; leitura do TSE em historico.py)
+  ao_vivo/             a coleta da apuração na nuvem (coletor.py, juntar.py; leitura do TSE em historico.py), o que o
+                       site lê na noite (painel.py) e o simulador da noite (simulador.py)
   coleta/              downloads (TSE, IBGE, pesquisas)            [Etapa 1]
   tratamento/          dados brutos -> tabelas limpas              [Etapa 1]
   analises/            o que alimenta o site (apuração no tempo, resultados, pesquisas, mapa)
-  modelos/             projeção do 2º turno [Etapa 5]; forecast da apuração [Etapa 6]
+  modelos/             projeção do 2º turno [Etapa 5]; forecast da apuração e a validação dele [Etapa 6]
   atualizacao.py       pesquisas novas e projeção atualizadas sozinhas até o 2º turno (atualizar, agendar)
 site/                  o site com as abas (Observable Framework)
   src/*.md             as páginas: Início, 2018, 2022, 2026, Comparações, Metodologia
