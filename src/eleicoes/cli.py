@@ -30,6 +30,10 @@ def main(argv=None):
     at.add_argument("--forcar", action="store_true", help="publica a revisão atual mesmo se a conferência achar problemas")
     at.add_argument("--avisar", action="store_true", help="avisos do Windows quando entra pesquisa nova ou algo dá errado")
 
+    rl = sub.add_parser("relogio", help="relógio das pesquisas (GitHub Actions): dispara o site.yml a cada hora até o 2º turno")
+    rl.add_argument("--ensaio", action="store_true", help="ensaio de 12 min: rodadas de 4 min, tiques de minuto em minuto")
+    rl.add_argument("--fim", help="até quando a corrente vai (ISO); cada rodada passa à seguinte")
+
     ag = sub.add_parser("agendar", help="tarefa do Windows que roda `atualizar` sozinha até o 2º turno")
     ag.add_argument("--horas", type=int, default=2, help="intervalo entre as rodadas (padrão: 2)")
     ag.add_argument("--remover", action="store_true", help="apaga a tarefa agendada")
@@ -78,6 +82,9 @@ def main(argv=None):
         elif a.comando == "atualizar":
             from eleicoes import atualizacao
             raise SystemExit(atualizacao.rodar(forcar=a.forcar, avisos=a.avisar))
+        elif a.comando == "relogio":
+            from eleicoes import relogio
+            raise SystemExit(relogio.rodar(ensaio=a.ensaio, fim=a.fim))
         elif a.comando == "agendar":
             from eleicoes import atualizacao
             atualizacao.remover() if a.remover else atualizacao.agendar(a.horas)

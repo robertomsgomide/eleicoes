@@ -26,7 +26,7 @@ localhost; depois, publicação para o público geral sem depender de um PC liga
 | 5 | Projeção do 2º turno 2026 ✅ (07/10; refeita sozinha a cada pesquisa nova até 25/10) | Total do país: ponto de partida (1º turno das urnas + divisão dos outros candidatos nas pesquisas que perguntaram os dois turnos) combinado com a tendência das pesquisas feitas depois do 1º turno, com incerteza e chance de vitória; distribuição seção a seção para regiões e UFs. Seção "Projeção do 2º turno" em 2026 e na Metodologia; tendência das pesquisas de 2º turno recomeça depois do 1º turno (`uv run eleicoes projecao`). Pesquisas e projeção atualizadas a cada hora, com conferência antes de publicar (`uv run eleicoes atualizar`, no GitHub Actions) | Refeita dia a dia em 2018 e 2022: erro médio de 1,0 e 1,6 p.p., na véspera −0,05 e +0,8 p.p., urnas na faixa de 80% em todos os dias ([validacao_projecao.md](validacao_projecao.md)) |
 | 6 | Forecast dinâmico da apuração (coleta na nuvem ✅ 13/10; forecast e página ao vivo ✅ 14/10) | Na página de 2026, as seções Resultado, Mapa e Apuração no tempo ao vivo, com o forecast do resultado final (`modelos/forecast.py`): o 1º turno de cada seção distribuído como na projeção, mais o swing aprendido com a noite, num modelo hierárquico (país → região → UF → município). Os coletores (`.github/workflows/apuracao.yml`) calculam o forecast; a página lê o TSE direto e os ramos dos coletores (decisões abaixo). `uv run eleicoes forecast` refaz 2018 e 2022; `uv run eleicoes simular` serve a noite de 2022 refeita para conferir a página | Noites de 2018 e 2022 refeitas em 18 ordens de chegada: em 2022, erro médio de 0,16 ponto com 1% apurado e de 0,1 com 10%, resultado na faixa de 80% em 100% dos momentos (2018: 97%) ([validacao_forecast.md](validacao_forecast.md)); no ar em 25/10 às 17h |
 | 7 | Depois de 25/10 | 2º turno de 2026 com os boletins do TSE; aba de comparações; Censo 2022 | — |
-| 8 | Publicação ✅ (08/10; a parte ao vivo fica com a Etapa 6) | Site no GitHub Pages ([robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)), publicado a cada envio para o `main`; `atualizar` a cada hora no GitHub Actions, com os dados que ele usa no ramo `dados` (`.github/workflows/site.yml`) | Site no ar e a rodada automática conferida no GitHub |
+| 8 | Publicação ✅ (08/10; a parte ao vivo fica com a Etapa 6) | Site no GitHub Pages ([robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)), publicado a cada envio para o `main`; `atualizar` a cada hora no GitHub Actions, com os dados que ele usa no ramo `dados` (`.github/workflows/site.yml`, disparado desde 14/10 pelo relógio das pesquisas, `relogio.yml`) | Site no ar e a rodada automática conferida no GitHub |
 
 Sugestão de folga para 25/10: etapas 1–3 até ~15/10, mapa até ~19/10, projeção até ~21/10,
 ensaio do forecast até ~23/10. Se apertar, o mapa pode ir para depois do dia 25 sem prejuízo. (Em 08/10, as
@@ -47,7 +47,7 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
   ponto de partida (Lula 48,2%, chance de 24%).
 - **Atualização automática** (07/10; no GitHub Actions desde 08/10): `uv run eleicoes atualizar` roda a cada hora
   até as 17h de 25/10. Uma revisão nova da Wikipedia só é publicada depois de comparada com a guardada. Ela é
-  segurada, e a rodada falha (o GitHub avisa por e-mail), se mais de 2 pesquisas somem ou mudam de uma vez, se um número já publicado muda mais
+  segurada, e a rodada falha (e abre uma issue no repositório), se mais de 2 pesquisas somem ou mudam de uma vez, se um número já publicado muda mais
   de 3 pontos, ou se uma pesquisa nova tem datas ou percentuais impossíveis ou, no 2º turno, fica a mais de 8
   pontos da projeção (`src/eleicoes/atualizacao.py`). Testado numa cópia do projeto: as 20 pesquisas que entraram
   entre 03/10 e 07/10 passaram; a tabela do 2º turno apagada e Lula +5 / Flávio −5 numa pesquisa já publicada
@@ -125,6 +125,26 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
 - **Ensaio**: `uv run eleicoes simular` serve a noite de 2022 refeita como se fosse a de 2026 (o que os coletores e o TSE
   serviriam), para conferir a página. Nos testes do navegador embutido, com o painel oculto, o Observable não atualiza
   (ele espera quadros de animação, que um painel oculto não tem); num navegador comum, sim.
+
+## Relógio das pesquisas: decisões (14/10/2026)
+
+- **Sem o cron do GitHub**: de 08 a 14/10, o cron de hora em hora do `site.yml` rodou em só 18% das horas (24 vezes
+  em 137 h), em minutos aleatórios e nunca com menos de 3,2 h entre uma rodada e a seguinte; nenhuma foi cancelada
+  pelo `concurrency`. A documentação do GitHub trata o `schedule` como "melhor esforço". O cron saiu do `site.yml`, sem
+  ficar de reserva.
+- **Uma corrente de rodadas no próprio Actions** (`.github/workflows/relogio.yml`, `src/eleicoes/relogio.py`): um
+  disparo pela API (`workflow_dispatch`) começa na hora. Cada rodada fica acordada até 5h40, dispara o Site aos 17 min
+  de cada hora e, ao começar, já deixa a seguinte na fila (`concurrency`), que assume quando ela acabar, mesmo que ela
+  caia no meio; depois de cada tique, confere que a seguinte continua na fila. A corrente acaba às 17h de 25/10. Uma
+  máquina do GitHub fica ocupada o tempo todo, de graça no repositório público.
+- **Avisos por issue**: o e-mail de falha do GitHub vai para quem disparou a rodada, e nas rodadas da corrente quem
+  dispara é o robô. Uma revisão recusada (ou outra falha do Site) e um disparo que falha viram uma issue que menciona
+  o dono do repositório. Uma corrente que cria rodadas demais numa hora (um erro que derruba cada rodada ao começar)
+  para e avisa.
+- **Publicação**: as rodadas do relógio só publicam o site quando os dados mudam; a rodada manual continua publicando
+  sempre.
+- **Também é o teste do dia 25**: o `apuracao.yml` espera o dia 25 com o mesmo mecanismo (a rodada espera e dispara a
+  si mesma). Até lá, a corrente do relógio passa a vez umas 50 vezes.
 
 ## O que os dados permitem (verificado em 05/10/2026; 2026 atualizado em 07/10)
 

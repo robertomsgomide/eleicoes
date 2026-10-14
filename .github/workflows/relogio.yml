@@ -1,0 +1,58 @@
+# O relógio das pesquisas: dispara o site.yml (a conferência das pesquisas na Wikipedia e a projeção) a cada hora, aos
+# 17 minutos, até o início da apuração do 2º turno, às 17h de 25/10 (src/eleicoes/relogio.py).
+#
+# Por que um relógio: o agendamento do próprio GitHub (cron) é "melhor esforço" e, de 08 a 14/10, o cron de hora em
+# hora do site.yml rodou em só 18% das horas, com 3 a 9,5 h entre uma rodada e a seguinte. Um disparo pela API
+# (workflow_dispatch) começa na hora. O relógio é uma corrente de rodadas deste workflow: cada uma fica acordada até
+# 5h40 (um job dura no máximo 6 h) e, ao começar, já deixa a seguinte na fila (concurrency), que assume quando esta
+# acabar, mesmo que esta caia no meio. É o mesmo mecanismo com que o apuracao.yml espera o dia 25.
+#
+# Ligar: "Run workflow", uma vez, com "fim" em branco. Parar: "Disable workflow" na aba Actions e cancelar a rodada em
+# curso e a da fila. Um disparo que falha vira uma issue no repositório (o e-mail de falha do GitHub vai para quem
+# disparou a rodada, e nas rodadas da corrente quem dispara é o robô).
+# Ensaio: "Run workflow" com "ensaio" roda a mesma corrente por 12 min, em rodadas de até 4 min, com tiques de minuto
+# em minuto que não disparam nada; a primeira rodada dispara o site.yml uma vez.
+name: Relógio das pesquisas
+run-name: ${{ inputs.ensaio && 'Ensaio do relógio das pesquisas' || 'Relógio das pesquisas' }}  # relogio.py: NOMES
+
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: "Ensaio de 12 min: rodadas de 4 min, sem disparar o site a cada tique"
+        type: boolean
+        default: false
+      fim:
+        description: "Deixe em branco (cada rodada passa à seguinte até quando a corrente vai)"
+        type: string
+        default: ""
+
+concurrency:
+  group: relogio-${{ inputs.ensaio && 'ensaio' || 'oficial' }}
+  cancel-in-progress: false
+
+jobs:
+  relogio:
+    name: Relógio
+    runs-on: ubuntu-24.04  # fixo até a eleição: o ubuntu-latest passa ao Ubuntu 26 a partir de 19/10
+    timeout-minutes: 355   # a rodada acaba sozinha em até 5h40; o GitHub encerra um job em 6 h
+    permissions:
+      contents: read
+      actions: write       # dispara o site.yml e a rodada seguinte do relógio
+      issues: write        # avisa por issue quando um disparo falha
+    env:
+      TZ: America/Sao_Paulo
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.2.0  # o setup-uv não publica a etiqueta curta (v10)
+        with:
+          enable-cache: true
+
+      - name: Relógio
+        env:
+          ENSAIO: ${{ inputs.ensaio && '1' || '' }}
+          FIM: ${{ inputs.fim }}
+        run: uv run --frozen --no-dev eleicoes relogio ${ENSAIO:+--ensaio} ${FIM:+--fim "$FIM"}

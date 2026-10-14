@@ -75,17 +75,25 @@ coleta de verdade, se faltar menos de 24 h para as 15h30 de 25/10 (antes disso, 
 Actions, "Apuração ao vivo" → "Disable workflow" e cancelar a rodada em curso. Como funciona por dentro:
 [src/eleicoes/ao_vivo/coletor.py](src/eleicoes/ao_vivo/coletor.py).
 
-Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada hora, até as 17h de 25/10, o GitHub
-Actions ([.github/workflows/site.yml](.github/workflows/site.yml)) roda `uv run eleicoes atualizar`, faz o commit
-dos dados refeitos e publica o site de novo. Cada rodada:
+Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada hora, aos 17 minutos, até as 17h de
+25/10, o workflow Site ([.github/workflows/site.yml](.github/workflows/site.yml)) roda `uv run eleicoes atualizar`,
+faz o commit dos dados refeitos e publica o site de novo. Cada rodada:
 
 - pergunta à Wikipedia se a página de pesquisas de 2026 mudou (as revisões de 2018 e 2022 ficam fixas);
 - se mudou, confere as pesquisas antes de gravar e refaz `site/src/data/pesquisas_2026.json` e `projecao.json`.
   Sem nada novo, a projeção só passa a valer até hoje (um commit por dia);
 - segura a revisão quando pesquisas já publicadas somem ou mudam de número, ou quando uma pesquisa nova é
   impossível ou fica longe demais da projeção: pode ser vandalismo ou uma tabela lida errado. O site fica como
-  estava, a rodada falha e o GitHub avisa por e-mail. Depois de conferir a página: na aba Actions, "Run workflow"
-  com "forcar" marcado.
+  estava, a rodada falha e abre uma issue no repositório, que menciona você. Depois de conferir a página: na aba
+  Actions, "Run workflow" no Site, com "forcar" marcado.
+
+Quem dispara o Site a cada hora é o relógio das pesquisas ([.github/workflows/relogio.yml](.github/workflows/relogio.yml),
+[src/eleicoes/relogio.py](src/eleicoes/relogio.py)), não o agendamento do GitHub: o cron é "melhor esforço" e, de
+08 a 14/10, o de hora em hora rodou em só 18% das horas. O relógio é uma corrente de rodadas: cada uma fica acordada
+até 5h40, dispara o Site a cada hora e, ao começar, já deixa a seguinte na fila, que assume quando ela acabar. Para
+ligar: "Relógio das pesquisas" → "Run workflow", uma vez. Para parar: "Disable workflow" e cancelar a rodada em curso
+e a da fila. "Run workflow" com "ensaio" mostra a corrente funcionando em 12 min, sem disparar o Site a cada tique.
+Um disparo que falha também vira uma issue.
 
 O resumo de cada rodada fica na página dela, na aba Actions. Como o robô faz commits no `main`, rode `git pull`
 antes de enviar mudanças suas. Os dados que a rodada usa e que não ficam no `main` estão no ramo `dados`
