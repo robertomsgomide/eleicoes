@@ -1,8 +1,9 @@
-# O site no GitHub Pages: publicado a cada envio para o main e, a cada hora, até o início da apuração do 2º
-# turno, conferido contra a Wikipedia (uv run eleicoes atualizar). Com pesquisa nova, ou com a projeção de um dia
-# novo, o robô faz o commit dos dados refeitos e publica de novo. Uma revisão da página recusada pela conferência
-# faz a rodada falhar, e o GitHub avisa por e-mail; depois de conferir a página, "Run workflow" com "forcar"
-# publica mesmo assim.
+# O site no GitHub Pages: publicado a cada envio para o main e, a cada hora até o início da apuração do 2º turno,
+# conferido contra a Wikipedia (uv run eleicoes atualizar). Quem dispara a rodada de cada hora é o relógio das
+# pesquisas (relogio.yml), não o agendamento do GitHub, que pula a maior parte das horas. Com pesquisa nova, ou com a
+# projeção de um dia novo, o robô faz o commit dos dados refeitos e publica de novo. Uma revisão da página recusada
+# pela conferência faz a rodada falhar; nas rodadas do relógio, o aviso é uma issue no repositório (job "aviso").
+# Depois de conferir a página, "Run workflow" com "forcar" publica mesmo assim.
 #
 # A atualização usa dados que não ficam no main: as seções e os totais oficiais de cada turno já apurado e as
 # pesquisas de 2018 e 2022 vêm do ramo `dados`; a revisão guardada da Wikipedia, o registro de pesquisas do TSE e as
@@ -13,12 +14,14 @@ name: Site
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "17 * * * *"  # a cada hora, aos 17 minutos: o GitHub atrasa ou pula rodadas quando está cheio
   workflow_dispatch:
     inputs:
       forcar:
         description: "Publicar a revisão atual da Wikipedia mesmo que a conferência ache problemas"
+        type: boolean
+        default: false
+      relogio:
+        description: "Rodada do relógio das pesquisas: publica só com dados novos e avisa falhas por issue"
         type: boolean
         default: false
 
@@ -38,6 +41,7 @@ jobs:
       contents: write  # o commit dos dados refeitos
     outputs:
       mudou: ${{ steps.commit.outputs.mudou }}
+      registro: ${{ steps.resumo.outputs.registro }}
     steps:
       - uses: actions/checkout@v7
 
@@ -67,9 +71,11 @@ jobs:
         run: uv run --frozen --no-dev eleicoes atualizar ${{ inputs.forcar && '--forcar' || '' }}
 
       - name: Resumo da rodada
+        id: resumo
         if: always()
         run: |
           { echo '```'; cat dados/atualizar.log 2>/dev/null || echo "(sem registro)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "registro<<FIM_DO_REGISTRO"; tail -n 30 dados/atualizar.log 2>/dev/null; echo "FIM_DO_REGISTRO"; } >> "$GITHUB_OUTPUT"
 
       - name: Guarda o estado para a próxima rodada
         if: always()
@@ -99,8 +105,8 @@ jobs:
 
   publicar:
     needs: atualizar
-    # no envio para o main e na rodada manual, sempre; na rodada de cada hora, só quando os dados mudaram
-    if: ${{ !cancelled() && (github.event_name == 'push' || needs.atualizar.outputs.mudou == 'true' || (github.event_name == 'workflow_dispatch' && needs.atualizar.result == 'success')) }}
+    # no envio para o main e na rodada manual, sempre; na rodada do relógio, só quando os dados mudaram
+    if: ${{ !cancelled() && (github.event_name == 'push' || needs.atualizar.outputs.mudou == 'true' || (github.event_name == 'workflow_dispatch' && !inputs.relogio && needs.atualizar.result == 'success')) }}
     runs-on: ubuntu-24.04  # fixo até a eleição: o ubuntu-latest passa ao Ubuntu 26 a partir de 19/10
     timeout-minutes: 20
     permissions:
@@ -133,3 +139,41 @@ jobs:
           path: site/dist
       - id: publicacao
         uses: actions/deploy-pages@v5
+
+  # Nas rodadas do relógio, o e-mail de falha do GitHub não chega a ninguém (quem disparou foi o robô): uma revisão
+  # recusada, ou qualquer outra falha, vira uma issue que menciona o dono do repositório, com o fim do registro da
+  # rodada. Uma issue só, enquanto estiver aberta: as falhas seguintes entram como comentários nela.
+  aviso:
+    needs: [atualizar, publicar]
+    if: ${{ failure() && inputs.relogio }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TITULO: "Pesquisas: a atualização automática precisa de atenção"
+      REGISTRO: ${{ needs.atualizar.outputs.registro }}
+      RODADA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      DONO: ${{ github.repository_owner }}
+    steps:
+      - name: Issue
+        run: |
+          {
+            echo "@$DONO a rodada $RODADA falhou. Se foi uma revisão da Wikipedia recusada, confira a página e, se ela"
+            echo "estiver certa, publique com \"Run workflow\" e \"forcar\" no workflow Site."
+            echo
+            echo "Fim do registro da rodada (dados/atualizar.log):"
+            echo
+            echo '```'
+            printf '%s\n' "${REGISTRO:-(sem registro)}"
+            echo '```'
+          } > "$RUNNER_TEMP/aviso.md"
+          n=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | [.number, .title] | @tsv' \
+              | awk -F '\t' -v t="$TITULO" '$2 == t { print $1; exit }')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file "$RUNNER_TEMP/aviso.md"
+          else
+            gh issue create --title "$TITULO" --body-file "$RUNNER_TEMP/aviso.md"
+          fi
