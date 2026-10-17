@@ -1,6 +1,6 @@
 # Qualidade das pesquisas
 
-> Gerado por `uv run eleicoes pesquisas` (ou `atualizar`) em 16/10/2026 12:17. Não editar à mão.
+> Gerado por `uv run eleicoes pesquisas` (ou `atualizar`) em 16/10/2026 21:17. Não editar à mão.
 
 | Ano | Turno | Pesquisas | Pelo número de registro | Por instituto, amostra e datas | Sem registro encontrado | Amostra ≠ registro (> 3%) | Revisão da Wikipedia |
 |---|---|--:|--:|--:|--:|--:|---|
@@ -8,8 +8,8 @@
 | 2018 | 2º | 78 | 76 | 2 | 0 | 8 | [73055947](https://pt.wikipedia.org/w/index.php?oldid=73055947) |
 | 2022 | 1º | 150 | 149 | 1 | 0 | 4 | [73055949](https://pt.wikipedia.org/w/index.php?oldid=73055949) |
 | 2022 | 2º | 189 | 0 | 179 | 10 | 0 | [73055949](https://pt.wikipedia.org/w/index.php?oldid=73055949) |
-| 2026 | 1º | 163 | 0 | 158 | 5 | 0 | [73224698](https://pt.wikipedia.org/w/index.php?oldid=73224698) |
-| 2026 | 2º | 174 | 0 | 168 | 6 | 0 | [73224698](https://pt.wikipedia.org/w/index.php?oldid=73224698) |
+| 2026 | 1º | 163 | 0 | 158 | 5 | 0 | [73228393](https://pt.wikipedia.org/w/index.php?oldid=73228393) |
+| 2026 | 2º | 175 | 0 | 169 | 6 | 0 | [73228393](https://pt.wikipedia.org/w/index.php?oldid=73228393) |
 
 ## Pesquisas sem registro encontrado
 
