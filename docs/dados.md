@@ -104,7 +104,7 @@ Até o 2º turno de 2026, `atualizar` roda sozinho a cada hora, no GitHub Action
 disparado pelo relógio das pesquisas, `.github/workflows/relogio.yml`; os dados que ele usa estão descritos em
 [dados/README.md](../dados/README.md)). A revisão nova só é
 guardada depois de comparada com a anterior (`src/eleicoes/atualizacao.py`): mais de 2 pesquisas sumindo ou
-mudando de uma vez, um número já publicado mudando mais de 3 pontos ou uma pesquisa nova impossível (ou, no 2º
+mudando de uma vez, os votos válidos de uma pesquisa já publicada mudando mais de 3 pontos ou uma pesquisa nova impossível (ou, no 2º
 turno, a mais de 8 pontos da projeção) seguram a revisão até alguém conferir. Sem pesquisa nova, a revisão
 guardada fica e o `.json` dela ganha `consultado_em`, a última vez em que ela ainda batia com a página: a projeção
 vai até esse dia.

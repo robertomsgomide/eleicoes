@@ -43,9 +43,12 @@ APP_DOS_AVISOS = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0
 # O que a conferência aceita sem alguém olhar a página
 SUMIDAS = 2       # pesquisas guardadas que podem sumir de uma vez (data ou nome corrigido, duplicata removida)
 ALTERADAS = 2     # pesquisas guardadas que podem ter os números corrigidos de uma vez
-MUDANCA = 3.0     # p.p.: correção maior que isso num número já publicado é suspeita
+MUDANCA = 3.0     # p.p.: correção maior que isso nos válidos de uma pesquisa já publicada é suspeita
 DISTANCIA = 8.0   # p.p.: pesquisa nova de 2º turno, feita depois do 1º, mais longe que isso da projeção é suspeita
-NUMEROS = ("petismo", "bolsonarismo", "petismo_validos", "bolsonarismo_validos")
+# Só os válidos entram na projeção: a correção comum de válidos digitados como votos totais (48 × 52 → 44 × 47,
+# com 9% de brancos, nulos e indecisos) muda os totais em 5 pontos e os válidos em 0,4
+VALIDOS = ("petismo_validos", "bolsonarismo_validos")
+NUMEROS = ("petismo", "bolsonarismo", *VALIDOS)
 LISTAR = 10       # pesquisas listadas no registro da rodada, por tipo de mudança
 
 
@@ -83,14 +86,13 @@ def _ordem(k):
 
 def comparar(antigas, novas):
     """O que mudou de uma leitura da página para outra: pesquisas novas, sumidas, alteradas ([(antiga, nova, maior
-    mudança nos números, em p.p.)]), ligadas a outro registro do TSE e renomeadas ([(antiga, nova)]: o mesmo
+    mudança nos válidos, em p.p.)]), ligadas a outro registro do TSE e renomeadas ([(antiga, nova)]: o mesmo
     instituto com outro nome)."""
     a, n = {_chave(p): p for p in antigas}, {_chave(p): p for p in novas}
     alteradas, religadas, renomeadas = [], [], []
     for k in sorted(a.keys() & n.keys(), key=_ordem):
-        d = max(abs(n[k][c] - a[k][c]) for c in NUMEROS)
-        if d > 0.001 or n[k]["amostra"] != a[k]["amostra"]:
-            alteradas.append((a[k], n[k], round(d, 2)))
+        if any(abs(n[k][c] - a[k][c]) > 0.001 for c in NUMEROS) or n[k]["amostra"] != a[k]["amostra"]:
+            alteradas.append((a[k], n[k], round(max(abs(n[k][c] - a[k][c]) for c in VALIDOS), 2)))
             continue
         if n[k]["registro"] != a[k]["registro"]:
             religadas.append(n[k])
@@ -109,7 +111,7 @@ def problemas(m, ano, referencia=None, hoje=None):
         out.append(f"{len(m['sumidas'])} pesquisas já publicadas sumiram da página")
     if len(m["alteradas"]) > ALTERADAS:
         out.append(f"{len(m['alteradas'])} pesquisas já publicadas mudaram de uma vez")
-    out += [f"{descrever(antiga, nomes)}: um número mudou {_num(d)} pontos" for antiga, _, d in m["alteradas"] if d > MUDANCA]
+    out += [f"{descrever(antiga, nomes)}: os válidos mudaram {_num(d)} pontos" for antiga, _, d in m["alteradas"] if d > MUDANCA]
     depois = analise.depois_do_primeiro_turno(m["novas"], ano)
     for p in m["novas"]:
         if not (0 < p["petismo"] <= 100 and 0 < p["bolsonarismo"] <= 100 and p["petismo"] + p["bolsonarismo"] <= 100.5):
