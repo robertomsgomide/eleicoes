@@ -1,6 +1,6 @@
 # Qualidade das pesquisas
 
-> Gerado por `uv run eleicoes pesquisas` (ou `atualizar`) em 20/10/2026 08:17. Não editar à mão.
+> Gerado por `uv run eleicoes pesquisas` (ou `atualizar`) em 20/10/2026 10:28. Não editar à mão.
 
 | Ano | Turno | Pesquisas | Pelo número de registro | Por instituto, amostra e datas | Sem registro encontrado | Amostra ≠ registro (> 3%) | Revisão da Wikipedia |
 |---|---|--:|--:|--:|--:|--:|---|
@@ -8,8 +8,8 @@
 | 2018 | 2º | 78 | 76 | 2 | 0 | 8 | [73055947](https://pt.wikipedia.org/w/index.php?oldid=73055947) |
 | 2022 | 1º | 150 | 149 | 1 | 0 | 4 | [73055949](https://pt.wikipedia.org/w/index.php?oldid=73055949) |
 | 2022 | 2º | 189 | 0 | 179 | 10 | 0 | [73055949](https://pt.wikipedia.org/w/index.php?oldid=73055949) |
-| 2026 | 1º | 163 | 0 | 158 | 5 | 0 | [73254728](https://pt.wikipedia.org/w/index.php?oldid=73254728) |
-| 2026 | 2º | 184 | 0 | 178 | 6 | 0 | [73254728](https://pt.wikipedia.org/w/index.php?oldid=73254728) |
+| 2026 | 1º | 163 | 0 | 158 | 5 | 0 | [73255107](https://pt.wikipedia.org/w/index.php?oldid=73255107) |
+| 2026 | 2º | 188 | 0 | 181 | 7 | 0 | [73255107](https://pt.wikipedia.org/w/index.php?oldid=73255107) |
 
 ## Pesquisas sem registro encontrado
 
@@ -38,3 +38,4 @@ Não aparecem no registro nacional do TSE com a mesma empresa, amostra (± 3%) e
 | 2026 | 2º | DataTrends | 28/09 a 30/09 | 2000 |
 | 2026 | 2º | Datafolha | 28/09 a 01/10 | 2002 |
 | 2026 | 2º | IFP | 29/09 a 02/10 | 2000 |
+| 2026 | 2º | IFP | 16/10 a 20/10 | 3000 |
