@@ -47,8 +47,8 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
   ponto de partida (Lula 48,2%, chance de 24%).
 - **Atualização automática** (07/10; no GitHub Actions desde 08/10): `uv run eleicoes atualizar` roda a cada hora
   até as 17h de 25/10. Uma revisão nova da Wikipedia só é publicada depois de comparada com a guardada. Ela é
-  segurada, e a rodada falha (e abre uma issue no repositório), se mais de 2 pesquisas somem ou mudam de uma vez, se um número já publicado muda mais
-  de 3 pontos, ou se uma pesquisa nova tem datas ou percentuais impossíveis ou, no 2º turno, fica a mais de 8
+  segurada, e a rodada falha (e abre uma issue no repositório), se mais de 2 pesquisas somem ou mudam de uma vez, se os votos válidos de uma pesquisa já
+  publicada mudam mais de 3 pontos, ou se uma pesquisa nova tem datas ou percentuais impossíveis ou, no 2º turno, fica a mais de 8
   pontos da projeção (`src/eleicoes/atualizacao.py`). Testado numa cópia do projeto: as 20 pesquisas que entraram
   entre 03/10 e 07/10 passaram; a tabela do 2º turno apagada e Lula +5 / Flávio −5 numa pesquisa já publicada
   foram segurados.

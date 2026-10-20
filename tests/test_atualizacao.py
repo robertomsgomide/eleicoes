@@ -59,11 +59,21 @@ def test_pesquisas_guardadas_sumindo_seguram_a_revisao():
 def test_correcao_pequena_passa_e_mudanca_grande_num_numero_antigo_nao():
     pequena = [_p("Datafolha", 45.5, 47, (1, 10), (3, 10)), *ANTIGAS[1:]]
     m = A.comparar(ANTIGAS, pequena)
-    assert [(a["instituto"], d) for a, _, d in m["alteradas"]] == [("Datafolha", 0.5)]
+    assert [(a["instituto"], d) for a, _, d in m["alteradas"]] == [("Datafolha", 0.28)]  # 48,91% → 49,19% dos válidos
     assert A.problemas(m, 2026, hoje=HOJE) == []
     grande = [_p("Datafolha", 52, 40, (1, 10), (3, 10)), *ANTIGAS[1:]]
     (motivo,) = A.problemas(A.comparar(ANTIGAS, grande), 2026, hoje=HOJE)
-    assert motivo.startswith("Datafolha") and "mudou" in motivo
+    assert motivo.startswith("Datafolha") and "mudaram" in motivo
+
+
+def test_validos_digitados_como_totais_e_corrigidos_depois_passam():
+    # Real Time Big Data em 20/10/2026: 48 × 52 (os válidos, nas colunas dos totais) e depois 44 × 47 (os totais);
+    # Flávio muda 5 pontos nos totais e 0,35 nos válidos
+    antes = _p("Real Time Big Data", 48, 52, (15, 10), (19, 10))
+    depois = _p("Real Time Big Data", 44, 47, (15, 10), (19, 10))
+    m = A.comparar(ANTIGAS + [antes], ANTIGAS + [depois])
+    assert [(a["instituto"], d) for a, _, d in m["alteradas"]] == [("Real Time Big Data", 0.35)]
+    assert A.problemas(m, 2026, hoje=HOJE) == []
 
 
 def test_mudanca_so_no_registro_do_tse_e_publicada_sem_problema():
