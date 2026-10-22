@@ -85,7 +85,10 @@ faz o commit dos dados refeitos e publica o site de novo. Cada rodada:
 - segura a revisão quando pesquisas já publicadas somem ou mudam de número, ou quando uma pesquisa nova é
   impossível ou fica longe demais da projeção: pode ser vandalismo ou uma tabela lida errado. O site fica como
   estava, a rodada falha e abre uma issue no repositório, que menciona você. Depois de conferir a página: na aba
-  Actions, "Run workflow" no Site, com "forcar" marcado.
+  Actions, "Run workflow" no Site, com "forcar" marcado;
+- publica o site quando os dados mudaram, ou quando o site no ar não foi montado do último commit do `main` (a
+  publicação anterior falhou). Uma publicação que falha também abre a issue, e a rodada seguinte publica de novo
+  sozinha.
 
 Quem dispara o Site a cada hora é o relógio das pesquisas ([.github/workflows/relogio.yml](.github/workflows/relogio.yml),
 [src/eleicoes/relogio.py](src/eleicoes/relogio.py)), não o agendamento do GitHub: o cron é "melhor esforço" e, de

@@ -141,8 +141,11 @@ etapas 0 a 5 e a publicação, a 8, estão prontas.)
   dispara é o robô. Uma revisão recusada (ou outra falha do Site) e um disparo que falha viram uma issue que menciona
   o dono do repositório. Uma corrente que cria rodadas demais numa hora (um erro que derruba cada rodada ao começar)
   para e avisa.
-- **Publicação**: as rodadas do relógio só publicam o site quando os dados mudam; a rodada manual continua publicando
-  sempre.
+- **Publicação**: as rodadas do relógio só publicam o site quando os dados mudam ou, desde 22/10, quando o site no ar
+  ficou para trás do `main`; a rodada manual continua publicando sempre. Em 22/10, uma publicação que falhou (o
+  registro do npm instável) deixou o site quase 8 h com a projeção da véspera, até a pesquisa nova seguinte: agora o
+  site diz de que commit foi montado (`versao.txt`), e a montagem usa os módulos do npm guardados no cache do Actions,
+  sem a rede.
 - **Também é o teste do dia 25**: o `apuracao.yml` espera o dia 25 com o mesmo mecanismo (a rodada espera e dispara a
   si mesma). Até lá, a corrente do relógio passa a vez umas 50 vezes.
 
