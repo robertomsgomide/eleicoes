@@ -875,7 +875,7 @@ function dicaProjecao(d, nomes) {
   const ch = chances(d);
   return [
     `${diaCurto(dia(d.data))} · faltavam ${d.dias} dias · ${d.pesquisas ? `${d.pesquisas} ${d.pesquisas === 1 ? "pesquisa" : "pesquisas"} depois do 1º turno` : "nenhuma pesquisa depois do 1º turno"}`,
-    ...CAMPOS.map((c) => `${nomes[c]}: ${pct(l[c].valor, 1)} (80%: ${pct(l[c].inf, 1)} a ${pct(l[c].sup, 1)}) · chance ${pct(ch[c], 0)}`)
+    ...CAMPOS.map((c) => `${nomes[c]}: ${pct(l[c].valor, 1)} (80%: ${pct(l[c].inf, 1)} a ${pct(l[c].sup, 1)}) · chance ${pct(ch[c], 1)}`)
   ].join("\n");
 }
 
@@ -936,7 +936,7 @@ export function graficoCenarios(d, {width = 640, nomes}) {
   const area = CAMPOS.flatMap((c) => lado(c).map((x) => ({x, y: densidade(x), campo: c})));
   const ch = chances(d);
   const limite = Math.max(Math.abs(media) + 4 * desvio, 10);
-  const texto = (c) => (c === "petismo" ? `${nomes.petismo} vence: ${pct(ch.petismo, 0)} →` : `← ${nomes.bolsonarismo} vence: ${pct(ch.bolsonarismo, 0)}`);
+  const texto = (c) => (c === "petismo" ? `${nomes.petismo} vence: ${pct(ch.petismo, 1)} →` : `← ${nomes.bolsonarismo} vence: ${pct(ch.bolsonarismo, 1)}`);
   const estreito = width < 480; // os dois rótulos não cabem lado a lado: um em cada linha
   return Plot.plot({
     width,
