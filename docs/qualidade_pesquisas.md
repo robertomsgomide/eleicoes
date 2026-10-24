@@ -1,6 +1,6 @@
 # Qualidade das pesquisas
 
-> Gerado por `uv run eleicoes pesquisas` (ou `atualizar`) em 24/10/2026 10:17. Não editar à mão.
+> Gerado por `uv run eleicoes pesquisas` (ou `atualizar`) em 24/10/2026 13:52. Não editar à mão.
 
 | Ano | Turno | Pesquisas | Pelo número de registro | Por instituto, amostra e datas | Sem registro encontrado | Amostra ≠ registro (> 3%) | Revisão da Wikipedia |
 |---|---|--:|--:|--:|--:|--:|---|
@@ -8,8 +8,8 @@
 | 2018 | 2º | 78 | 76 | 2 | 0 | 8 | [73055947](https://pt.wikipedia.org/w/index.php?oldid=73055947) |
 | 2022 | 1º | 150 | 149 | 1 | 0 | 4 | [73055949](https://pt.wikipedia.org/w/index.php?oldid=73055949) |
 | 2022 | 2º | 189 | 0 | 179 | 10 | 0 | [73055949](https://pt.wikipedia.org/w/index.php?oldid=73055949) |
-| 2026 | 1º | 163 | 0 | 158 | 5 | 0 | [73281096](https://pt.wikipedia.org/w/index.php?oldid=73281096) |
-| 2026 | 2º | 206 | 0 | 198 | 8 | 0 | [73281096](https://pt.wikipedia.org/w/index.php?oldid=73281096) |
+| 2026 | 1º | 163 | 0 | 158 | 5 | 0 | [73282028](https://pt.wikipedia.org/w/index.php?oldid=73282028) |
+| 2026 | 2º | 207 | 0 | 201 | 6 | 0 | [73282028](https://pt.wikipedia.org/w/index.php?oldid=73282028) |
 
 ## Pesquisas sem registro encontrado
 
@@ -37,6 +37,4 @@ Não aparecem no registro nacional do TSE com a mesma empresa, amostra (± 3%) e
 | 2026 | 2º | Palver | 20/09 a 23/09 | 3000 |
 | 2026 | 2º | DataTrends | 28/09 a 30/09 | 2000 |
 | 2026 | 2º | Datafolha | 28/09 a 01/10 | 2002 |
-| 2026 | 2º | IFP | 29/09 a 02/10 | 2000 |
-| 2026 | 2º | IFP | 16/10 a 20/10 | 3000 |
 | 2026 | 2º | Vetor Arrow | 22/10 a 23/10 | 6867 |
