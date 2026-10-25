@@ -182,6 +182,25 @@ def test_contadas_sao_as_primeiras_a_chegar_em_cada_municipio(pais):
             assert chegada[mesmo & c].max() < chegada[mesmo & (chegada <= 30) & ~c].min()
 
 
+def test_a_sobra_do_total_da_uf_so_entra_com_o_horario_de_chegada_das_secoes(pais):
+    prior, pt, bo, chegada = pais
+    a = _apurado(prior, pt, bo, chegada, 30)
+    # o total de cada UF já tem as seções que chegaram até 50; os municípios lidos, só as que chegaram até 30
+    tot = chegada <= 50
+    uf_sec = prior.uf_mun[prior.mun]
+    U = len(F.UFS)
+    a.uf = {"petismo": np.bincount(uf_sec, pt * tot, U), "bolsonarismo": np.bincount(uf_sec, bo * tot, U),
+            "secoes": np.bincount(uf_sec, tot.astype(int), U)}
+    a.chegada = np.where(tot, chegada, np.inf)  # o -cs.json já mostra as seções do total
+    extra, PE, BE = F.a_mais_nas_ufs(prior, a, F.contadas(prior, a))
+    assert (extra == (tot & (chegada > 30))).all()
+    assert PE.sum() == (pt * extra).sum() and BE.sum() == (bo * extra).sum()
+    # o -cs.json atrás do total: as seções a mais não são adivinhadas pela ordem do 1º turno
+    a.chegada = np.where(chegada <= 40, chegada, np.inf)
+    extra, PE, BE = F.a_mais_nas_ufs(prior, a, F.contadas(prior, a))
+    assert not extra.any() and PE.sum() == BE.sum() == 0
+
+
 def test_secao_agregada_no_segundo_turno_passa_os_votos_para_a_principal(pais):
     prior, *_ = pais
     n, peso = prior.n, prior.peso.sum()

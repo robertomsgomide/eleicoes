@@ -283,13 +283,21 @@ def contadas(prior, apurado):
 
 def a_mais_nas_ufs(prior, apurado, contado):
     """O que o total oficial de cada UF tem a mais que a soma dos municípios lidos: (seções, votos do petismo, votos do
-    bolsonarismo), as seções sendo as primeiras a chegar entre as que ainda não estão no resultado lido do município."""
+    bolsonarismo), as seções sendo as primeiras a chegar entre as que ainda não estão no resultado lido do município.
+
+    Só nas UFs em que o -cs.json já mostra recebidas ao menos tantas seções fora dos municípios lidos quantas o total
+    tem a mais. Quando os horários de chegada ficam para trás dos totais, as seções a mais seriam adivinhadas pela
+    ordem do 1º turno, e o swing delas, tomado por preciso, puxava a UF e o país: em 25/10/2026, depois de o arquivo do
+    país ficar 2 h parado, só ~21% das seções totalizadas tinham horário conhecido, e o forecast pulava 1,5 ponto de um
+    minuto para o outro com a faixa de 80% em ±0,4. Na validação a chegada vem antes da totalização, e nada muda."""
     U = len(UFS)
     if apurado.uf is None:
         return np.zeros(prior.n, bool), np.zeros(U), np.zeros(U)
     uf_sec = prior.uf_mun[prior.mun]
     soma = lambda x: np.bincount(prior.uf_mun, x, U)  # noqa: E731
     faltam = np.maximum(np.asarray(apurado.uf["secoes"], float) - soma(apurado.secoes), 0)
+    conhecidas = np.bincount(uf_sec[~contado & np.isfinite(apurado.chegada)], minlength=U)
+    faltam = np.where(conhecidas >= faltam, faltam, 0)
     PE = np.where(faltam > 0, np.maximum(np.asarray(apurado.uf["petismo"], float) - soma(apurado.petismo), 0), 0)
     BE = np.where(faltam > 0, np.maximum(np.asarray(apurado.uf["bolsonarismo"], float) - soma(apurado.bolsonarismo), 0), 0)
     chave = np.lexsort((prior.ordem, apurado.chegada, uf_sec))
