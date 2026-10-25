@@ -1,0 +1,16 @@
+{
+ "coletor": "c",
+ "job": "40151727185.1-5",
+ "eleicao": "6257",
+ "pleito": "3220",
+ "fase_s": 40,
+ "prazo": "2026-10-24T23:13:17",
+ "ensaio": true,
+ "runner": "GitHub Actions 1000000503",
+ "inicio": "2026-10-24T23:13:15",
+ "fim": "2026-10-24T23:13:15",
+ "rodadas": 0,
+ "falhas": 0,
+ "codigo": 0,
+ "acabou": false
+}
