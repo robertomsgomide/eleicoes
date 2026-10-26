@@ -23,7 +23,7 @@ def main(argv=None):
     pq.add_argument("--anos", type=int, nargs="+", default=[2018, 2022, 2026])
     pq.add_argument("--atualizar", action="store_true", help="baixa a revisão atual da Wikipedia e o registro do TSE")
 
-    sub.add_parser("projecao", help="projeção do 2º turno (1º turno + pesquisas) e a validação em 2018 e 2022")
+    sub.add_parser("projecao", help="projeção do 2º turno (1º turno + pesquisas) e a validação nos anos já decididos")
     sub.add_parser("forecast", help="forecast da apuração: as noites de 2018 e 2022 refeitas (validação e dados do site)")
 
     at = sub.add_parser("atualizar", help="pesquisa nova na Wikipedia? confere e refaz as pesquisas e a projeção do site")
@@ -51,12 +51,6 @@ def main(argv=None):
     co.add_argument("--fim", help="até quando coletar, no máximo (ISO)")
     co.add_argument("--ensaio", action="store_true", help="ensaio curto: trocas de job a cada 12 min, por 30 min")
     co.add_argument("--juntar", action="store_true", help="com --plano: só juntar o que já foi gravado")
-
-    si = sub.add_parser("simular", help="simula a noite (2022 refeita) num endereço local, para conferir a página de 2026")
-    si.add_argument("--ano", type=int, default=2022, choices=[2018, 2022])
-    si.add_argument("--porta", type=int, default=8765)
-    si.add_argument("--inicio", type=float, default=0, help="minuto da noite em que o relógio começa (0 = 17h)")
-    si.add_argument("--velocidade", type=float, default=10, help="quantas vezes mais rápido que o relógio real")
 
     ju = sub.add_parser("juntar", help="junta o que os coletores gravaram em dados/bruto/ao_vivo/<eleição>")
     ju.add_argument("pastas", nargs="+", help="pastas dos ramos dos coletores")
@@ -102,9 +96,6 @@ def main(argv=None):
             else:
                 pasta = a.pasta or coletor.AV.cache / f"ramo-{a.coletor}"
                 raise SystemExit(coletor.main(a.coletor, pasta, a.ramo, a.job, a.epoca, a.periodo, a.fim, a.ensaio))
-        elif a.comando == "simular":
-            from eleicoes.ao_vivo import simulador
-            simulador.servir(a.ano, a.porta, a.inicio, a.velocidade)
         elif a.comando == "juntar":
             from eleicoes.ao_vivo import juntar
             if a.ensaio and not a.destino:

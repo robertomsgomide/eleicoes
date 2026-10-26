@@ -33,7 +33,7 @@ Os demais candidatos aparecem como "outros". Como nos resultados do TSE, os perc
 - **Totais oficiais por município e zona** (TSE): o resultado oficial, usado como gabarito.
 - **Votação por seção** (TSE): os mesmos votos de cada seção, sem os horários. Sai um dia depois da eleição, dias antes dos boletins de urna: é a fonte dos votos por seção enquanto os boletins não saem e, depois, mais uma conferência deles.
 - **Locais de votação** (TSE): endereço e coordenadas de cada seção, de 2016 a 2026 (as eleições municipais entram só para completar coordenadas; veja [Mapa](#mapa)).
-- **Site de resultados do TSE**: as leituras do total oficial gravadas por este projeto durante a noite da apuração e o resultado final de cada turno, usado na conferência enquanto o total oficial por município e zona não sai.
+- **Site de resultados do TSE**: as atualizações do total oficial gravadas por este projeto durante a noite da apuração (no 2º turno de 2026, por três coletores na nuvem, que gravaram também o total de cada estado e o resultado de cada município) e o resultado final de cada turno, usado enquanto o total oficial por município e zona e os boletins de urna não saem.
 - **IBGE**: códigos e fronteiras de municípios, estados e regiões.
 
 ## Conferência com o resultado oficial
@@ -41,6 +41,8 @@ Os demais candidatos aparecem como "outros". Como nos resultados do TSE, os perc
 A soma dos votos de todos os boletins de urna é comparada, candidato a candidato, com o total oficial do TSE no Brasil, em cada estado e em cada zona eleitoral, nos dois turnos de 2018 e de 2022 e no 1º turno de 2026. Tudo bate exatamente, com uma única exceção: no 1º turno de 2018, em Pastos Bons (MA), zona 17, o total oficial tem 76 votos a mais do que os boletins publicados (Haddad +46, Bolsonaro +20, outros +10). Os boletins dessa zona estão completos e consistentes, e os arquivos públicos não mostram de onde vêm esses votos. A diferença fica registrada no código, e qualquer outra divergência interrompe o processamento.
 
 Em 2026, o total oficial por município e zona saiu primeiro sem os votos de Presidente e foi republicado com eles em 7 de outubro; até lá, a conferência foi com o resultado final da totalização em cada estado. Os boletins do 1º turno, publicados em 6 de outubro, batem com o total oficial em todas as zonas e, seção por seção, com a votação por seção, em todas as 499.206 seções. Os 5.246 votos de Leonardo Alves de Araújo (28), cuja candidatura foi indeferida, contam como nulos, como no resultado oficial, que não os traz.
+
+O 2º turno de 2026 ainda não tem os boletins de urna nem o total oficial por município e zona, que o TSE publica nos dias depois da eleição. Até lá, o resultado vem dos arquivos finais da totalização no site de resultados do TSE, estado por estado; a conferência seção a seção entra quando os boletins saírem.
 
 ## Apuração no tempo
 
@@ -70,7 +72,7 @@ display(html`<div class="tabela"><table>
 
 A participação de cada candidato ao longo do % apurado é bem reproduzida: a **ordem** em que as seções chegam se repete de uma eleição para outra. O **relógio** não: o 2º turno transmite os boletins muito mais rápido que o 1º, então o % apurado em cada horário erra bastante entre turnos. ${teste26 ? `De uma eleição para a outra, no mesmo turno, o quadro se repete: no 1º turno de 2026, a participação de cada candidato erra em média ${decimal(erroCampo(teste26, "media"), 1)} ponto (no máximo ${decimal(erroCampo(teste26, "max"), 1)}), e o % apurado em cada horário, ${decimal(teste26.erro_pct_apurado.media, 0)} pontos em média (no máximo ${decimal(teste26.erro_pct_apurado.max, 0)}). Por isso, em 2018, o eixo padrão é o % apurado.` : ""}
 
-**Antes dos boletins.** Nos dias entre a eleição e a publicação dos boletins de urna, a noite de um turno aparece como este projeto a gravou ao vivo (as leituras do total oficial do TSE), rotulada como provisória. A curva exata a substitui quando os boletins saem.
+**Antes dos boletins.** Nos dias entre a eleição e a publicação dos boletins de urna, a noite de um turno aparece como este projeto a gravou ao vivo: o país, pelas atualizações do total oficial do país; cada região, pela soma dos totais oficiais dos seus estados. Ela tem o selo "gravada ao vivo" (em Comparações, "provisória"), e a curva exata a substitui quando os boletins saem. Na noite do 2º turno de 2026, o total do país ficou parado em 0,4% das seções entre 17h07 e 19h04, enquanto os totais dos estados seguiam andando, e só alcançou a soma deles perto das 20h30; até os boletins, a curva do país mostra o total como o TSE o publicou.
 
 ## Mapa
 
@@ -122,7 +124,7 @@ Os três primeiros métodos acham a posição do próprio local, quase sempre co
 
 **De onde vêm.** O TSE guarda o registro de cada pesquisa (empresa, datas, tamanho da amostra, metodologia), mas não os resultados. Os números vêm das tabelas da Wikipedia em português ("Pesquisas de opinião para a eleição presidencial no Brasil"), que transcrevem as pesquisas divulgadas. Cada página é guardada na revisão usada, e a base derivada dela segue a licença da Wikipedia (CC BY-SA 4.0).
 
-**Atualização.** Em 2026, a página é conferida a cada hora até a véspera do 2º turno. Como qualquer pessoa pode editar a Wikipedia, uma revisão nova só entra no site depois de uma conferência automática. Ela fica de fora até alguém olhar a página se mais de duas pesquisas já publicadas sumirem ou mudarem de uma vez, se os votos válidos de uma pesquisa já publicada mudarem mais de 3 pontos, ou se uma pesquisa nova tiver datas ou percentuais impossíveis ou, no 2º turno, ficar a mais de 8 pontos da projeção.
+**Atualização.** Em 2026, a página foi conferida a cada hora até o dia do 2º turno. Como qualquer pessoa pode editar a Wikipedia, uma revisão nova só entrava no site depois de uma conferência automática. Ela ficava de fora até alguém olhar a página se mais de duas pesquisas já publicadas sumissem ou mudassem de uma vez, se os votos válidos de uma pesquisa já publicada mudassem mais de 3 pontos, ou se uma pesquisa nova tivesse datas ou percentuais impossíveis ou, no 2º turno, ficasse a mais de 8 pontos da projeção.
 
 **Quais entram.** Pesquisas nacionais com fim do campo entre 1º de janeiro do ano da eleição e a véspera de cada turno, quando o registro no TSE é obrigatório. No 1º turno, entra o cenário estimulado mais completo de cada pesquisa que traga os dois candidatos estudados; linhas que listam só os dois primeiros colocados, sem os demais, ficam de fora, porque não permitem calcular votos válidos. No 2º turno, entra o confronto direto entre os dois. Em 2018, só os cenários com Fernando Haddad (até 11 de setembro as pesquisas também testavam Lula).
 
@@ -141,12 +143,20 @@ Os três primeiros métodos acham a posição do próprio local, quase sempre co
 ```js
 const par = projecao.parametros;
 const anosValidados = Object.keys(projecao.validacao);
+// os desvios foram escolhidos com 2018 e 2022; a distribuição só é medida com os votos de cada seção do 2º turno
+const anosCalibrados = anosValidados.filter((a) => a < "2026");
+const comDistribuicao = anosValidados.filter((a) => projecao.validacao[a].distribuicao);
+const semDistribuicao = anosValidados.filter((a) => !projecao.validacao[a].distribuicao);
 const nomesDe = (ano) => ({petismo: eleicoes.eleicoes[ano].petismo.nome, bolsonarismo: eleicoes.eleicoes[ano].bolsonarismo.nome});
+const juntar = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} e ${xs.at(-1)}`);
+const partidaPior = anosValidados.filter((a) => Math.abs(projecao.validacao[a].partida) > Math.abs(projecao.validacao[a].segundo_turno_nas_pesquisas));
+const p26 = projecao.anos["2026"];
+const v26p = projecao.validacao["2026"];
 ```
 
-A projeção estima o resultado do 2º turno de 2026, em % dos votos válidos, com a incerteza de cada número. Ela tem duas partes: quanto cada candidato terá no país e como esse total se distribui pelos estados e regiões. O mesmo método, refeito dia a dia com os dados de 2018 e de 2022, mostra quanto ele teria errado naquelas eleições.
+A projeção estimou o resultado do 2º turno de 2026, em % dos votos válidos, com a incerteza de cada número, a cada dia entre os dois turnos. Ela tem duas partes: quanto cada candidato teria no país e como esse total se distribui pelos estados e regiões. O mesmo método, refeito dia a dia com os dados de 2018 e de 2022, mostra quanto ele teria errado naquelas eleições, e os desvios foram escolhidos com elas. Em 2026, ele errou mais que nas duas (Como se saiu, abaixo).
 
-**O ponto de partida.** Na noite do 1º turno, ainda sem pesquisas novas, a projeção parte do resultado das urnas e da divisão dos eleitores dos outros candidatos que as pesquisas da última semana mostravam. Muitas pesquisas perguntam o 1º e o 2º turno às mesmas pessoas: a diferença entre o petismo no 2º turno e no 1º, dividida pelo que os outros candidatos tinham no 1º, diz que parte dos eleitores dos outros iria para o petismo. A média dessa parte nas pesquisas da semana (${par.semana_pareadas} dias) é aplicada aos votos que os outros candidatos tiveram nas urnas. Comparar os dois turnos dentro da mesma pesquisa tira o viés que ela tenha igual nos dois. Em 2018, 2022 e 2026, as pesquisas do 1º turno ficaram abaixo do candidato bolsonarista; tomadas diretamente, as de 2º turno da mesma semana erraram a parte do PT em ${anosValidados.map((a) => `${pp(projecao.validacao[a].segundo_turno_nas_pesquisas, 1)} (${a})`).join(" e ")}, e o ponto de partida, em ${anosValidados.map((a) => `${pp(projecao.validacao[a].partida, 1)} (${a})`).join(" e ")}.
+**O ponto de partida.** Na noite do 1º turno, ainda sem pesquisas novas, a projeção parte do resultado das urnas e da divisão dos eleitores dos outros candidatos que as pesquisas da última semana mostravam. Muitas pesquisas perguntam o 1º e o 2º turno às mesmas pessoas: a diferença entre o petismo no 2º turno e no 1º, dividida pelo que os outros candidatos tinham no 1º, diz que parte dos eleitores dos outros iria para o petismo. A média dessa parte nas pesquisas da semana (${par.semana_pareadas} dias) é aplicada aos votos que os outros candidatos tiveram nas urnas. Comparar os dois turnos dentro da mesma pesquisa tira o viés que ela tenha igual nos dois. Em 2018, 2022 e 2026, as pesquisas do 1º turno ficaram abaixo do candidato bolsonarista; tomadas diretamente, as de 2º turno da mesma semana erraram a parte do PT em ${juntar(anosValidados.map((a) => `${pp(projecao.validacao[a].segundo_turno_nas_pesquisas, 1)} (${a})`))}, e o ponto de partida, em ${juntar(anosValidados.map((a) => `${pp(projecao.validacao[a].partida, 1)} (${a})`))}.${partidaPior.length ? ` Em ${juntar(partidaPior)}, o ponto de partida errou mais que elas.` : ""}
 
 **As pesquisas depois do 1º turno.** A cada dia, entra a tendência das pesquisas de 2º turno com o campo inteiro depois do 1º turno, a mesma reta local da seção de pesquisas (núcleo de ${par.janela_dias} dias), no dia da última pesquisa. As duas estimativas se juntam pela precisão de cada uma. Os desvios usados (em pontos percentuais da parte de cada candidato nos votos válidos):
 
@@ -154,7 +164,7 @@ A projeção estima o resultado do 2º turno de 2026, em % dos votos válidos, c
 display(html`<div class="tabela"><table>
   <thead><tr><th>Parte da incerteza</th><th style="text-align:right">Desvio</th><th>De onde vem</th></tr></thead>
   <tbody>
-    <tr><td>Ponto de partida</td><td style="text-align:right">${decimal(par.desvio_partida, 1)}</td><td>errou ${anosValidados.map((a) => `${pp(projecao.validacao[a].partida, 1)} em ${a}`).join(" e ")}; com duas eleições, um valor maior que esses erros</td></tr>
+    <tr><td>Ponto de partida</td><td style="text-align:right">${decimal(par.desvio_partida, 1)}</td><td>errou ${juntar(anosCalibrados.map((a) => `${pp(projecao.validacao[a].partida, 1)} em ${a}`))}; com duas eleições, um valor maior que esses erros${v26p ? ` (em 2026, errou ${pp(v26p.partida, 1)})` : ""}</td></tr>
     <tr><td>Uma pesquisa em torno da média</td><td style="text-align:right">${decimal(par.desvio_pesquisa, 1)}</td><td>amostra e estilo de cada instituto; pesa menos quanto mais pesquisas houver</td></tr>
     <tr><td>Erro comum a todas as pesquisas</td><td style="text-align:right">${decimal(par.desvio_vespera, 1)}</td><td>o que a média das pesquisas ainda erra na véspera; não diminui com mais pesquisas</td></tr>
     <tr><td>Mudança até a eleição</td><td style="text-align:right">${decimal(par.desvio_deriva, 1)} por raiz de dia</td><td>quanto a opinião ainda pode mudar entre a última pesquisa e a eleição: ${decimal(par.desvio_deriva * Math.sqrt(7), 1)} pontos em uma semana</td></tr>
@@ -162,17 +172,17 @@ display(html`<div class="tabela"><table>
 </table></div>`);
 ```
 
-<p class="nota">Logo depois do 1º turno, com poucas pesquisas, o ponto de partida pesa mais; perto da eleição, com dezenas de pesquisas e pouco tempo para a opinião mudar, as pesquisas pesam quase tudo. A chance de vitória é a probabilidade de passar de 50% numa distribuição normal com a média e o desvio combinados. Com só duas eleições para comparar, os desvios são números redondos, escolhidos para que as faixas de 80% contenham o resultado com folga em 2018 e 2022, e não um ajuste fino.</p>
+<p class="nota">Logo depois do 1º turno, com poucas pesquisas, o ponto de partida pesa mais; perto da eleição, com dezenas de pesquisas e pouco tempo para a opinião mudar, as pesquisas pesam quase tudo. A chance de vitória é a probabilidade de passar de 50% numa distribuição normal com a média e o desvio combinados. Com só duas eleições para comparar, os desvios são números redondos, escolhidos para que as faixas de 80% contenham o resultado com folga em 2018 e 2022, e não um ajuste fino. Em 2026, não bastaram: as pesquisas erraram mais do que esses desvios previam.</p>
 
 **Estados e regiões.** O total do país é distribuído seção por seção, a partir do 1º turno. Quem votou no candidato do PT ou no bolsonarista continua com ele; os votos dos outros candidatos se dividem numa proporção que acompanha como a seção votou: onde o petismo teve, entre os dois, mais votos, a parte dele nos votos dos outros também é maior. A força dessa relação (${decimal(par.inclinacao, 1)}, numa escala em que 0 seria a mesma divisão em todo o país e 1, uma divisão que acompanha inteiramente a da seção) foi a que melhor reproduziu os municípios em 2018 e 2022. Um único número, ajustado a cada projeção, faz a soma das seções dar o total do país. O erro dessa distribuição, medido com o total nacional verdadeiro, foi proporcional ao peso dos outros candidatos no 1º turno: em cada estado, cerca de ${decimal(par.erro_uf, 2)} ponto para cada ponto dos outros (em 2018 eles tiveram 25%; em 2022, 8%). O intervalo de cada estado soma esse erro à incerteza do país.
 
-**Como teria se saído.** Em 2018 e em 2022, a projeção refeita a cada dia entre os dois turnos, só com as pesquisas concluídas até aquele dia:
+**Como se saiu.** Em ${juntar(anosValidados)}, a projeção refeita a cada dia entre os dois turnos, só com as pesquisas concluídas até aquele dia:
 
 ```js
 const anosProj = anosValidados.map((a) => projecao.anos[a]);
 ```
 
-<div class="grid grid-cols-2">
+<div class="grid grid-cols-3">
   ${anosProj.map((p) => html`<div class="card">
     <h2>${p.ano}</h2>
     <h3>% dos votos válidos no 2º turno · faixa de 80% · losango: as urnas</h3>
@@ -192,9 +202,9 @@ display(html`<div class="tabela"><table>
 </table></div>`);
 ```
 
-<p class="nota">Erro: projeção menos urnas, na parte do candidato do PT nos votos válidos (positivo: a projeção deu mais ao PT do que as urnas). Em 2018, as pesquisas depois do 1º turno ficaram abaixo de Fernando Haddad até a última semana, e o ponto de partida segurou a projeção perto do resultado; em 2022, as primeiras pesquisas depois do 1º turno ficaram acima de Lula, e a projeção só chegou perto das urnas na reta final. Só com o total nacional verdadeiro, a distribuição pelo país errou, por estado, ${anosValidados.map((a) => `${decimal(projecao.validacao[a].distribuicao.ufs, 1)} ponto${projecao.validacao[a].distribuicao.ufs >= 2 ? "s" : ""} em ${a}`).join(" e ")} (desvio típico), e por município ${anosValidados.map((a) => `${decimal(projecao.validacao[a].distribuicao.municipios, 1)}`).join(" e ")}. Relatório completo em <code>docs/validacao_projecao.md</code>.</p>
+<p class="nota">Erro: projeção menos urnas, na parte do candidato do PT nos votos válidos (positivo: a projeção deu mais ao PT do que as urnas). Em 2018, as pesquisas depois do 1º turno ficaram abaixo de Fernando Haddad até a última semana, e o ponto de partida segurou a projeção perto do resultado; em 2022, as primeiras pesquisas depois do 1º turno ficaram acima de Lula, e a projeção só chegou perto das urnas na reta final.${p26?.resultado ? ` Em 2026, as pesquisas e o ponto de partida ficaram abaixo de Lula o tempo todo: a tendência das pesquisas não passou de ${pct(Math.max(...p26.serie.map((d) => d.media ?? 0)), 1)}, e a projeção, de ${pct(Math.max(...p26.serie.map((d) => d.petismo)), 1)}, contra ${pct(p26.resultado.petismo, 1)} nas urnas.` : ""} Só com o total nacional verdadeiro, a distribuição pelo país errou, por estado, ${juntar(comDistribuicao.map((a) => `${decimal(projecao.validacao[a].distribuicao.ufs, 1)} ponto${projecao.validacao[a].distribuicao.ufs >= 2 ? "s" : ""} em ${a}`))} (desvio típico), e por município ${juntar(comDistribuicao.map((a) => `${decimal(projecao.validacao[a].distribuicao.municipios, 1)}`))}${semDistribuicao.length ? `; a de ${juntar(semDistribuicao)} se mede com os votos de cada seção do 2º turno, quando o TSE os publicar` : ""}. Relatório completo em <code>docs/validacao_projecao.md</code>.</p>
 
-<div class="grid grid-cols-2">
+<div class="grid grid-cols-3">
   ${anosProj.map((p) => html`<div class="card">
     <h2>${p.ano}, estados na véspera</h2>
     <h3>Projeção do PT (ponto), faixa de 80% (barra) e urnas (losango)</h3>
@@ -207,6 +217,8 @@ display(html`<div class="tabela"><table>
 ```js
 const fc = FileAttachment("data/forecast.json").json();
 const ap22t2 = FileAttachment("data/apuracao_2022_t2.json").json();
+const ap26t2 = FileAttachment("data/apuracao_2026_t2.json").json();
+const noite26 = FileAttachment("data/noite_2026_t2.json").json();
 ```
 
 ```js
@@ -222,11 +234,11 @@ const quando = (ap, minuto) => hora(new Date(Date.parse(ap.inicio + ":00Z") + mi
 const atributosGanham = ["2018", "2022"].every((a) => fc.validacao[a].atributos.por_marco.every((x, i) => x.erro_medio <= fc.validacao[a].simples.por_marco[i].erro_medio));
 ```
 
-Na noite do 2º turno de 2026, o forecast estima o resultado final a cada minuto, com a incerteza dele. A contagem do TSE mostra o que já foi apurado, e isso depende de quais lugares chegaram primeiro: em 2022, ${nomes22.bolsonarismo} liderou a contagem até as ${quando(ap22t2, virada22.t)}, com ${pct(virada22.pct_secoes, 0)} das seções apuradas, e perdeu. O forecast olha também para quem falta apurar.
+Na noite do 2º turno de 2026, o forecast estimou o resultado final a cada poucos minutos, com a incerteza dele, e apareceu ao vivo na página de 2026. A contagem do TSE mostra o que já foi apurado, e isso depende de quais lugares chegaram primeiro: em 2022, ${nomes22.bolsonarismo} liderou a contagem até as ${quando(ap22t2, virada22.t)}, com ${pct(virada22.pct_secoes, 0)} das seções apuradas, e perdeu. O forecast olha também para quem falta apurar.
 
 **O ponto de partida.** Durante a noite, o TSE publica quais seções já chegaram e o resultado de cada município, e o 1º turno de cada seção é conhecido. Cada seção começa com o resultado que a projeção do 2º turno da véspera espera dela: o 1º turno da seção, com os votos dos outros candidatos divididos como na projeção. Com 0% apurado, o forecast é a própria projeção, inclusive na incerteza.
 
-**O que a noite ensina.** Quanto cada lugar se afasta desse ponto de partida — o swing — é aprendido com o que já foi apurado, num modelo hierárquico: um município com metade das seções apuradas diz muito sobre a outra metade; um município sem nada apurado fica com o swing da sua UF, que, sem nada apurado, fica com o da região, e esta com o do país. O comparecimento (quantos votos cada lugar dá em relação ao 1º turno) segue o mesmo modelo. O resultado de cada município é lido a cada poucos minutos, e o total de cada UF, a cada minuto; o que o total da UF tem a mais que os municípios lidos entra também.
+**O que a noite ensina.** Quanto cada lugar se afasta desse ponto de partida — o swing — é aprendido com o que já foi apurado, num modelo hierárquico: um município com metade das seções apuradas diz muito sobre a outra metade; um município sem nada apurado fica com o swing da sua UF, que, sem nada apurado, fica com o da região, e esta com o do país. O comparecimento (quantos votos cada lugar dá em relação ao 1º turno) segue o mesmo modelo. O resultado de cada município é lido a cada poucos minutos, e o total de cada UF, a cada minuto; o que o total da UF tem a mais que os municípios lidos entra também, desde que o TSE já mostre recebidas, fora desses municípios, seções bastantes para isso (a regra mudou na noite de 2026: veja abaixo).
 
 **A incerteza.** Cada nível (região, UF, município e seção) tem o seu desvio. Além deles, o que falta apurar não vota exatamente como o que já foi apurado, mesmo descontado o 1º turno de cada seção (em 2022, a parte de cada cidade que chegou por último pendeu um pouco mais para o bolsonarismo): o forecast conta com isso no país, em cada UF e em cada município. Esses desvios crescem com o peso dos outros candidatos no 1º turno — são os votos deles que se dividem de um jeito diferente do esperado — e foram medidos com o resultado verdadeiro de 2018 (outros: ${pct(100 * fp.outros["2018"], 0)} dos válidos no 1º turno) e de 2022 (${pct(100 * fp.outros["2022"], 0)}); em 2026, os outros tiveram ${pct(100 * fp.outros["2026"], 1)}. A faixa de 80% e a chance de vitória vêm de uma conta exata para esse modelo, sem sorteios.
 
@@ -256,7 +268,62 @@ display(html`<div class="tabela"><table>
 
 <p class="nota">Erro: forecast menos urnas, na parte do candidato do PT nos votos válidos, em pontos percentuais, em todas as ordens de chegada. Faixa: metade do intervalo de 80% (média). O resultado ficou dentro da faixa de 80% em ${pct(100 * fv22.na_faixa, 0)} dos momentos em 2022 e em ${pct(100 * fv18.na_faixa, 0)} em 2018 (de 1% apurado em diante): as faixas são conservadoras, como as da projeção. Em 2018, sem a hora de chegada de cada boletim, a ordem é estimada, e a divulgação só começou às 19h, com quase todas as seções apuradas; o teste de 2018 vale sobretudo pelas ordens inventadas, com os outros candidatos três vezes mais fortes que em 2026. Também foi testado um swing que acompanha atributos do 1º turno de cada seção (a parte dos outros candidatos, a inclinação entre os dois e o comparecimento), aprendido a cada momento nos municípios já apurados: ${atributosGanham ? "ele ganhou do modelo simples e entrou no forecast" : "ele não ganhou do modelo simples nas duas eleições e ficou de fora"}. Relatório completo em <code>docs/validacao_forecast.md</code>.</p>
 
-**O que é estimado.** O forecast é deste estudo, não do TSE, e o resultado oficial é o do TSE. Durante a noite, o mapa mostra em cada município o que o TSE já apurou nele; a divisão desses votos entre os locais de votação do município é estimada pela mesma conta do forecast (o 1º turno de cada local e o swing estimado do município), e aparece com o selo "estimada" até o TSE publicar os boletins de urna.
+```js
+// A noite de 2026, ao vivo: o forecast que os coletores mostraram (data/noite_2026_t2.json) sobre a contagem gravada
+const nomes26 = {petismo: eleicoes.eleicoes["2026"].petismo.nome, bolsonarismo: eleicoes.eleicoes["2026"].bolsonarismo.nome};
+const noite26s = serieDaNoite(noite26.forecast);
+const real26 = noite26.real;
+const desde = (m) => noite26s.filter((f) => f.apurado >= m);
+const cedo26 = desde(2)[0];
+const erroMax26 = Math.max(...desde(2).map((f) => Math.abs(f.petismo - real26)));
+const erroMedio26 = desde(2).reduce((s, f) => s + Math.abs(f.petismo - real26), 0) / desde(2).length;
+const naFaixa26 = desde(1).filter((f) => f.inf <= real26 && real26 <= f.sup).length / desde(1).length;
+const chanceMin26 = Math.min(...desde(1).map((f) => (real26 >= 50 ? f.chance : 1 - f.chance)));
+const vence26 = real26 >= 50 ? "petismo" : "bolsonarismo";
+// a contagem do TSE no momento de cada forecast (a atualização do total do país que ele acompanhava)
+const contagem26 = (f) => {
+  const i = ap26t2.t.findLastIndex((t) => t <= f.minuto);
+  const b = ap26t2.regioes.Brasil;
+  return (100 * b.petismo[i]) / b.validos[i];
+};
+const errosContagem26 = desde(2).map((f) => ({f, erro: contagem26(f) - real26}));
+const piorContagem26 = errosContagem26.reduce((a, x) => (Math.abs(x.erro) > Math.abs(a.erro) ? x : a));
+const viradas26 = ap26t2.viradas;
+const vezes = (n) => (n === 1 ? "uma vez" : n === 2 ? "duas vezes" : `${n} vezes`);
+// arredondado antes do sinal: −0,004 sai "0,00", não "−0,00"
+const centesimos = (v) => Math.round(100 * v) / 100 || 0;
+// o salto logo depois de o arquivo do país voltar a andar: o maior forecast entre 1% e 2% apurado
+const salto26 = desde(1).filter((f) => f.apurado < 2).reduce((a, f) => (f.petismo > a.petismo ? f : a));
+```
+
+**Como se saiu em 2026.** Na noite de 25 de outubro, o forecast rodou nos três coletores na nuvem, a cada envio deles (3 minutos), e a página de 2026 mostrava o do coletor mais recente. O registro abaixo junta os três: um forecast para cada atualização do total do país, ${noite26s.length} ao todo, exatamente como apareceram, com o código daquela noite.
+
+<div class="card">
+  <h2>A noite do 2º turno de 2026, ao vivo</h2>
+  <h3>${ap26t2.tipo === "gravada" ? html`<span class="selo">gravada ao vivo</span>` : html`<span class="selo">exata</span>`} · % dos votos válidos já apurados e, tracejado, o resultado final que o forecast previa a cada momento, com a faixa de 80%</h3>
+  ${legenda([{nome: nomes26.petismo, cor: COR.petismo}, {nome: nomes26.bolsonarismo, cor: COR.bolsonarismo}, {nome: "forecast, como apareceu ao vivo, com a faixa de 80%", cor: "var(--theme-foreground-muted)", estilo: "faixa"}])}
+  ${resize((width) => graficoCampos(ap26t2, {eixo: "hora", medida: "pct", width, nomes: nomes26, previsao: {serie: noite26s}}))}
+</div>
+
+<p class="nota">Às ${quando(ap26t2, cedo26.minuto)}, com ${pct(cedo26.apurado, 0)} das seções apuradas, o forecast dava ${nomes26.petismo} com ${pct(cedo26.petismo, 1)} (80% de chance entre ${pct(cedo26.inf, 1)} e ${pct(cedo26.sup, 1)}); as urnas deram ${pct(real26, 2)}, e a projeção da véspera, ${pct(noite26.projecao, 2)}. ${viradas26.length ? `A contagem do TSE mudou de líder ${vezes(viradas26.length)} (${viradas26.map((v) => `${nomes26[v.lider]} às ${quando(ap26t2, v.t)}`).join(", ")}); de 1% apurado em diante, o forecast deu a vitória a ${nomes26[vence26]} o tempo todo, com chance de ${chanceMin26 >= 0.999 ? "mais de 99,9%" : `pelo menos ${pct(100 * chanceMin26, 1)}`}.` : ""}</p>
+
+```js
+display(html`<div class="tabela"><table>
+  <thead><tr><th style="text-align:right">Seções apuradas</th><th style="text-align:right">Horário</th><th style="text-align:right">Forecast: ${nomes26.petismo}</th><th style="text-align:right">Faixa de 80%</th><th style="text-align:right">Erro do forecast</th><th style="text-align:right">Só a contagem: erro</th></tr></thead>
+  <tbody>${[1, 2, 5, 10, 20, 50, 80, 95].map((m) => {
+    const f = desde(m)[0];
+    return html`<tr><td style="text-align:right">${pct(m, 0)}</td><td style="text-align:right">${quando(ap26t2, f.minuto)}</td>
+      <td style="text-align:right">${pct(f.petismo, 2)}</td><td style="text-align:right;white-space:nowrap">${pct(f.inf, 1)} a ${pct(f.sup, 1)}</td>
+      <td style="text-align:right">${pp(centesimos(f.petismo - real26), 2)}</td><td style="text-align:right">${pp(centesimos(contagem26(f) - real26), 2)}</td></tr>`;
+  })}</tbody>
+</table></div>`);
+```
+
+<p class="nota">Erro: menos o resultado das urnas (${pct(real26, 2)} para ${nomes26.petismo}), em pontos percentuais. Seções apuradas e contagem: o total do país no TSE na atualização que cada forecast acompanhava. De ${pct(2, 0)} apurado em diante, o forecast ficou a no máximo ${decimal(erroMax26, 2)} ponto do resultado (em média, ${decimal(erroMedio26, 2)}); a contagem chegou a ficar a ${decimal(Math.abs(piorContagem26.erro), 1)} pontos dele (às ${quando(ap26t2, piorContagem26.f.minuto)}, com ${pct(piorContagem26.f.apurado, 0)} apurado). De 1% em diante, o resultado ficou dentro da faixa de 80% em ${pct(100 * naFaixa26, 0)} dos momentos.</p>
+
+**O ponto fraco: o começo da noite.** Às 17h07, com 0,4% das seções apuradas, o total do país no TSE parou e só voltou a andar às 19h04; os totais dos estados e os resultados dos municípios continuaram saindo, e o forecast seguiu com eles. O arquivo com o horário de chegada de cada seção também atrasou: quando o país voltou a andar, só cerca de um quinto das seções já totalizadas tinha o horário publicado. O forecast punha o que o total de cada UF tinha a mais que os municípios lidos nas seções que deviam ter chegado primeiro, adivinhadas pela ordem do 1º turno, e o swing tirado delas entrava no modelo como se tivesse sido medido. Por isso, às ${quando(ap26t2, salto26.minuto)}, ele chegou a dar ${pct(salto26.petismo, 1)} a ${nomes26.petismo}, com uma faixa de 80% estreita demais (${pct(salto26.inf, 1)} a ${pct(salto26.sup, 1)}), e só voltou para perto do resultado com os horários chegando, por volta das 19h15. Ainda naquela noite, a regra mudou no código: a sobra de uma UF só entra quando o TSE já mostra recebidas, fora dos municípios lidos, ao menos tantas seções quantas o total tem a mais. Com ela, as noites de 2018 e 2022 refeitas não mudam. Os coletores, que rodavam com o código da manhã, seguiram com a regra antiga até o fim, e o registro acima é o que eles mostraram.
+
+**O que é estimado.** O forecast é deste estudo, não do TSE, e o resultado oficial é o do TSE. No 2º turno de 2026, até o TSE publicar os votos de cada seção, o mapa mostra em cada município o resultado oficial dele; a divisão desses votos entre os locais de votação do município é estimada pela mesma conta do forecast (o 1º turno de cada local e o swing do município), e aparece com o selo "estimada".
 
 ## Horários
 

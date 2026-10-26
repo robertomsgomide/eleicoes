@@ -78,11 +78,12 @@ def de_arquivos_finais(pasta, ano):
 
 
 def nomes_candidatos(con, ano, turno, pasta_final=None):
-    """{número: nome na urna} pelo arquivo oficial ou, sem ele, pelo arquivo final do site de resultados."""
+    """{número: nome na urna} pelo arquivo oficial ou, sem ele (ou sem o turno nele), pelo arquivo final do site de
+    resultados."""
     arq = oficial.saida(ano)
-    if arq.exists():
-        return {int(n): nome.title() for n, nome in con.execute(f"""
-            SELECT nr_candidato, any_value(nm_urna_candidato) FROM '{arq.as_posix()}' WHERE turno = {turno} GROUP BY 1""").fetchall()}
+    if arq.exists() and (nomes := {int(n): nome.title() for n, nome in con.execute(f"""
+            SELECT nr_candidato, any_value(nm_urna_candidato) FROM '{arq.as_posix()}' WHERE turno = {turno} GROUP BY 1""").fetchall()}):
+        return nomes
     if pasta_final and (br := pasta_final / "br.json").exists():
         return {int(n): nome for n, nome in nomes_do_arquivo(json.loads(br.read_text("utf-8"))).items()}
     return {}

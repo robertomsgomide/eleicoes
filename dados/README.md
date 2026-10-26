@@ -46,9 +46,12 @@ forecast, o job copia do ramo `dados` as seções do 1º turno (`processado/tse/
 - `municipios.jsonl.gz`: cada atualização do resultado de cada município;
 - `secoes.csv.gz`: o horário de chegada de cada seção como o TSE mostrava na primeira vez que um coletor a viu (o TSE
   reescreve esses horários depois da apuração);
-- `final/` e `historico_estimado.*`, como no 1º turno, e `coleta.json`, com os jobs de cada coletor.
+- `final/` e `historico_estimado.*`, como no 1º turno, e `coleta.json`, com os jobs de cada coletor;
+- `previsoes.json`: o forecast que os coletores mostraram na noite, um por atualização do total do país (o feito com
+  mais seções lidas, quando mais de um coletor o fez), e `mapa.json`, o `mapa.json` do fim da noite. Os dois foram
+  acrescentados em 26/10/2026, de uma cópia dos três ramos, com `uv run eleicoes juntar <ramos>` (a gravação já estava
+  juntada; o comando só acrescenta o que falta).
 
-Os ramos `ao-vivo-*` só podem ser apagados depois que a página de 2026 deixar de lê-los: até o resultado do 2º turno
-entrar em `site/src/data/resultados.json` (Etapa 7), é deles que vêm a curva da noite, o forecast e o mapa. O ensaio
-(push no ramo `ensaio-apuracao`) grava nos ramos `ensaio-a`, `-b`, `-c` e junta no `ensaio-juntado`, que também podem
-ser apagados.
+O site lê só o que foi juntado aqui (`uv run eleicoes site`; `src/eleicoes/analises/noite.py`): os ramos `ao-vivo-*`
+já podem ser apagados. O ensaio (push no ramo `ensaio-apuracao`) grava nos ramos `ensaio-a`, `-b`, `-c` e junta no
+`ensaio-juntado`, que também podem ser apagados.

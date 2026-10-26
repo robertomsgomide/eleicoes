@@ -14,6 +14,7 @@ const ap18b = FileAttachment("data/apuracao_2018_t2.json").json();
 const ap22a = FileAttachment("data/apuracao_2022_t1.json").json();
 const ap22b = FileAttachment("data/apuracao_2022_t2.json").json();
 const ap26a = FileAttachment("data/apuracao_2026_t1.json").json();
+const ap26b = FileAttachment("data/apuracao_2026_t2.json").json();
 const pesquisas = [
   await FileAttachment("data/pesquisas_2018.json").json(),
   await FileAttachment("data/pesquisas_2022.json").json(),
@@ -27,7 +28,7 @@ const resumoMapa = FileAttachment("data/mapa/resumo.json").json();
 const series = [
   ...serieComparacao(ap18a), ...serieComparacao(ap18b),
   ...serieComparacao(ap22a), ...serieComparacao(ap22b),
-  ...serieComparacao(ap26a)
+  ...serieComparacao(ap26a), ...serieComparacao(ap26b)
 ];
 // Vantagem do petismo quando a apuração atingiu cada marco (vazio se a curva ainda não existia)
 const marcos = [25, 50, 75, 90];
@@ -36,7 +37,7 @@ const grupos = d3.groups(series, (s) => `${s.ano}|${s.turno}`).map(([chave, part
   const em = (m) => (pontos[0].apurado > m + 0.5 ? null : pontos.find((d) => d.apurado >= m)?.vantagem ?? null);
   const [ano, turno] = chave.split("|");
   const trechos = new Set(partes.map((p) => p.trecho));
-  const selo = trechos.has("estimado") ? (trechos.has("exato") ? "provisória" : "estimada") : null;
+  const selo = trechos.has("estimado") ? "estimada" : trechos.has("provisório") ? "provisória" : null;
   return {ano, turno: +turno, selo, valores: marcos.map(em), final: pontos.at(-1).vantagem};
 });
 const desde25 = grupos.filter((g) => g.valores[0] != null);
@@ -53,11 +54,11 @@ const modo = view(Inputs.radio(new Map([["Vantagem do petismo", "vantagem"], ["Q
 <div class="card">
   <h2>${modo === "vantagem" ? "Vantagem do candidato do PT sobre o bolsonarista ao longo da apuração" : "Diferença entre a vantagem naquele momento e a vantagem final"}</h2>
   <h3>Pontos percentuais dos votos válidos. ${modo === "vantagem" ? "Acima de zero, o petismo à frente; abaixo, o bolsonarismo." : "Abaixo de zero, o petismo ainda ia ganhar terreno até o fim."}</h3>
-  ${legenda([{nome: "2018", cor: "var(--ano-2018)"}, {nome: "2022", cor: "var(--ano-2022)"}, {nome: "2026", cor: "var(--ano-2026)"}, {nome: "trecho estimado", cor: "var(--theme-foreground-muted)", estilo: "tracejado"}])}
+  ${legenda([{nome: "2018", cor: "var(--ano-2018)"}, {nome: "2022", cor: "var(--ano-2022)"}, {nome: "2026", cor: "var(--ano-2026)"}, {nome: "curva estimada ou provisória", cor: "var(--theme-foreground-muted)", estilo: "tracejado"}])}
   ${resize((width) => graficoComparacao(series, {modo, width}))}
 </div>
 
-<p class="nota">2018: curva estimada (o TSE não publicou a chegada dos boletins) e que só começa às 19h, quando a divulgação começou e boa parte das seções já estava apurada. 2022 e 2026: exatas, pela hora em que cada boletim de urna chegou ao TSE.</p>
+<p class="nota">2018: curva estimada (o TSE não publicou a chegada dos boletins) e que só começa às 19h, quando a divulgação começou e boa parte das seções já estava apurada. ${ap26b.tipo === "gravada" ? "2022 e o 1º turno de 2026: exatas, pela hora em que cada boletim de urna chegou ao TSE. 2º turno de 2026: provisória, com as atualizações do total do país gravadas durante a noite; a exata entra quando o TSE publicar os boletins de urna." : "2022 e 2026: exatas, pela hora em que cada boletim de urna chegou ao TSE."}</p>
 
 ## A vantagem em cada momento da apuração
 

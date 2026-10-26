@@ -5,15 +5,18 @@ Estudo de ciência de dados, com finalidade informativa, sobre as eleições par
 apuração ao longo do tempo, resultados por região, pesquisas × resultado, mapa de pontos e,
 no 2º turno de 2026, projeção e forecast da apuração.
 
-**O site: [robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)**, atualizado sozinho a
-cada pesquisa nova até o 2º turno.
+**O site: [robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)**. No 2º turno de 2026
+(25/10), Lula venceu Flávio Bolsonaro por 51,79% a 48,21% dos votos válidos. Até a véspera, o site se atualizou sozinho
+a cada pesquisa nova; na noite da apuração, acompanhou a contagem ao vivo, com o forecast; agora mostra o resultado
+final. O mapa e a curva da apuração do 2º turno ficam exatos quando o TSE publicar os boletins de urna (Etapa 7).
 
 Fontes: TSE (resultados, boletins de urna, locais de votação, registro de pesquisas), IBGE
 (malhas e Censo 2022) e tabelas de pesquisas da Wikipedia (CC BY-SA). Roteiro em
 [docs/ROADMAP.md](docs/ROADMAP.md); dados e tabelas em [docs/dados.md](docs/dados.md); conferência
 contra os totais oficiais em [docs/qualidade_dados.md](docs/qualidade_dados.md); a projeção do 2º turno
-refeita em 2018 e 2022 em [docs/validacao_projecao.md](docs/validacao_projecao.md); o forecast da apuração, com as
-noites de 2018 e 2022 refeitas, em [docs/validacao_forecast.md](docs/validacao_forecast.md).
+refeita em 2018 e 2022, e comparada com as urnas em 2026, em [docs/validacao_projecao.md](docs/validacao_projecao.md); o
+forecast da apuração, com as noites de 2018 e 2022 refeitas, em [docs/validacao_forecast.md](docs/validacao_forecast.md),
+e a noite de 2026, como ele apareceu ao vivo, na Metodologia do site.
 
 ## Como rodar
 
@@ -32,7 +35,6 @@ uv run eleicoes site             # dados do site -> site/src/data (JSON, version
 uv run eleicoes forecast         # forecast da apuração: as noites de 2018 e 2022 refeitas -> site/src/data + docs
 uv run eleicoes coletar a        # um dos três coletores da apuração na nuvem (quem roda é o GitHub Actions; ver abaixo)
 uv run eleicoes juntar <ramos>   # junta o que os coletores gravaram em dados/bruto/ao_vivo/<eleição>
-uv run eleicoes simular          # a noite de 2022 refeita num endereço local, para conferir a página de 2026 (ver abaixo)
 uv run pytest                    # testes
 ```
 
@@ -41,7 +43,7 @@ A eleição acompanhada ao vivo pelos coletores é escolhida em `[ao_vivo]` no
 
 ### A noite do 2º turno, gravada na nuvem
 
-Em 25/10, a apuração é gravada pelo GitHub Actions ([.github/workflows/apuracao.yml](.github/workflows/apuracao.yml)),
+Em 25/10, a apuração foi gravada pelo GitHub Actions ([.github/workflows/apuracao.yml](.github/workflows/apuracao.yml)),
 sem depender de nenhum computador ligado:
 
 - três coletores (a, b, c) leem o TSE a cada 60 s, defasados de 20 s entre si. Cada um grava no seu ramo
@@ -58,16 +60,15 @@ sem depender de nenhum computador ligado:
 - 1 h depois de o TSE fechar a totalização (ou às 6h de 26/10, no máximo), o job "Junta as gravações" junta os três
   ramos em `dados/bruto/ao_vivo/ele2026-6258` e faz o commit no `main`.
 
-A página de 2026 lê, a cada minuto a partir das 16h30 de 25/10, o placar direto do TSE (país e UFs) e o `dados.json`
-e o `mapa.json` do coletor mais recente (`raw.githubusercontent.com`, ramos `ao-vivo-*`); se uma das fontes cair, a
-outra segura a página ([site/src/components/aovivo.js](site/src/components/aovivo.js)). Como o forecast funciona e
-como foi testado: Metodologia do site e [src/eleicoes/modelos/forecast.py](src/eleicoes/modelos/forecast.py).
-
-Para conferir a página sem esperar o dia 25: `uv run eleicoes simular` refaz a noite de 2022 (com os nomes de 2026)
-e serve, em `http://127.0.0.1:8765`, o que os coletores e o TSE serviriam; com o site em `npm run dev`, abra
-`http://localhost:3000/2026?ao-vivo=http://127.0.0.1:8765/ramo-{c}/&tse=http://127.0.0.1:8765/tse/`. O relógio da noite
-anda 10 vezes mais rápido (`--velocidade`) a partir das 17h (`--inicio`, em minutos); `/relogio?t=<minuto>` no
-simulador põe a noite num minuto. Essas trocas de fonte só valem em `localhost`.
+Na noite, a página de 2026 lia, a cada minuto, o placar direto do TSE (país e UFs) e o `dados.json` e o `mapa.json`
+do coletor mais recente (ramos `ao-vivo-*`). Desde 26/10, ela só lê os arquivos do site, que `uv run eleicoes site` gera
+da gravação juntada ([src/eleicoes/analises/noite.py](src/eleicoes/analises/noite.py)): `apuracao_2026_t2.json`, a
+apuração pelas leituras oficiais gravadas, até os boletins de urna; e `noite_2026_t2.json`, o forecast como apareceu na
+noite e, até o TSE publicar os votos de cada seção, o mapa do fim (o resultado de cada município, que a página reparte
+entre os locais pelo 1º turno). O histórico do forecast e o mapa do fim só existiam no `dados.json` e no `mapa.json` de
+cada ramo: `uv run eleicoes juntar <ramos>` os acrescentou à gravação já juntada (`previsoes.json` e `mapa.json`). Com
+isso, os ramos `ao-vivo-*` (e os do ensaio) podem ser apagados. Como o forecast funciona, como foi testado e como se
+saiu: Metodologia do site e [src/eleicoes/modelos/forecast.py](src/eleicoes/modelos/forecast.py).
 
 Para ver a coleta funcionando antes: um push no ramo `ensaio-apuracao` (ou "Run workflow" com "ensaio") roda o mesmo
 esquema por 30 min contra os arquivos do 1º turno, com trocas de job a cada 12 min. "Run workflow" sem "ensaio" liga a
@@ -75,7 +76,7 @@ coleta de verdade, se faltar menos de 24 h para as 15h30 de 25/10 (antes disso, 
 Actions, "Apuração ao vivo" → "Disable workflow" e cancelar a rodada em curso. Como funciona por dentro:
 [src/eleicoes/ao_vivo/coletor.py](src/eleicoes/ao_vivo/coletor.py).
 
-Até o 2º turno de 2026, as pesquisas novas entram sozinhas no site. A cada hora, aos 17 minutos, até as 17h de
+Até o 2º turno de 2026, as pesquisas novas entraram sozinhas no site. A cada hora, aos 17 minutos, até as 17h de
 25/10, o workflow Site ([.github/workflows/site.yml](.github/workflows/site.yml)) roda `uv run eleicoes atualizar`,
 faz o commit dos dados refeitos e publica o site de novo. Cada rodada:
 
@@ -120,13 +121,13 @@ npm run build      # site estático em site/dist, sem nenhuma dependência exter
 .github/workflows/     publicação do site no GitHub Pages, atualização a cada hora e a coleta da apuração (GitHub Actions)
 config/eleicoes.toml   anos, turnos, códigos do TSE, candidatos e cores de cada campo
 src/eleicoes/          o código (pacote Python)
-  ao_vivo/             a coleta da apuração na nuvem (coletor.py, juntar.py; leitura do TSE em historico.py), o que o
-                       site lê na noite (painel.py) e o simulador da noite (simulador.py)
+  ao_vivo/             a coleta da apuração na nuvem (coletor.py, juntar.py; leitura do TSE em historico.py) e o que o
+                       site lia na noite (painel.py)
   coleta/              downloads (TSE, IBGE, pesquisas)            [Etapa 1]
   tratamento/          dados brutos -> tabelas limpas              [Etapa 1]
   analises/            o que alimenta o site (apuração no tempo, resultados, pesquisas, mapa)
   modelos/             projeção do 2º turno [Etapa 5]; forecast da apuração e a validação dele [Etapa 6]
-  atualizacao.py       pesquisas novas e projeção atualizadas sozinhas até o 2º turno (atualizar, agendar)
+  atualizacao.py       pesquisas novas e projeção atualizadas sozinhas até o 2º turno de 2026 (atualizar, agendar)
 site/                  o site com as abas (Observable Framework)
   src/*.md             as páginas: Início, 2018, 2022, 2026, Comparações, Metodologia
   src/components/      gráficos (Observable Plot), o mapa (WebGL + canvas), os pontos da página inicial e formatação em pt-BR
