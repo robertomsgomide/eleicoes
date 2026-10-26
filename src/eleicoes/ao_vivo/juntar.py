@@ -10,8 +10,12 @@ Uma leitura vista por mais de um coletor entra uma vez; de cada seção fica a p
                            mostrava na primeira vez que um coletor a viu (o TSE reescreve esses horários depois)
   final/                   os arquivos de resultado do país e de cada UF no fim, como vieram do TSE
   historico_estimado.*     a apuração minuto a minuto, pelos horários gravados e a média por seção do município
+  previsoes.json           o forecast que os coletores mostraram na noite (o histórico do dados.json de cada ramo): um
+                           por leitura do país, o feito com mais seções lidas quando mais de um coletor o fez
+  mapa.json                o mapa.json do fim da noite, do coletor mais recente (o resultado e o swing de cada município)
   coleta.json              os jobs de cada coletor (rodadas, falhas) e o que foi juntado
-Só junta depois de a coleta acabar (ou com --forcar) e não refaz uma gravação já juntada sem --forcar.
+Só junta depois de a coleta acabar (ou com --forcar) e não refaz uma gravação já juntada sem --forcar; numa gravação
+juntada antes de previsoes.json existir (a do 2º turno de 2026), só acrescenta ele e o mapa.json.
 """
 import collections
 import concurrent.futures as cf
@@ -91,11 +95,30 @@ def _historico(destino, br, vistas, municipios):
     H.plotar(s, H.horario_oficial(br), destino / "historico_estimado.png")
 
 
-def juntar(pastas, destino=None, forcar=False, ensaio=False, log=print):
+def _forecast(pastas, destino, log):
+    """previsoes.json e mapa.json, a partir do dados.json e do mapa.json de cada ramo; False se nenhum ramo os tem."""
+    lidos = [(p, json.loads((p / "dados.json").read_text("utf-8"))) for p in pastas if (p / "dados.json").exists()]
+    if not lidos:
+        return False
+    por_leitura = {}
+    for _, d in lidos:
+        for f in d.get("previsoes") or []:
+            if f["h"] not in por_leitura or f["apurado"] > por_leitura[f["h"]]["apurado"]:
+                por_leitura[f["h"]] = {"coletor": d["coletor"], **f}
+    _json(destino / "previsoes.json", sorted(por_leitura.values(), key=lambda f: f["h"]))
+    # o mais recente, como o site escolhia na noite: a última leitura do TSE e, de duas iguais, o envio mais novo
+    pasta, d = max(lidos, key=lambda x: ((x[1].get("tse") or {}).get("h") or "", x[1].get("atualizado") or ""))
+    if (pasta / "mapa.json").exists():
+        (destino / "mapa.json").write_bytes((pasta / "mapa.json").read_bytes())
+    log(f"   forecast: {len(por_leitura)} momentos da noite; mapa do fim, do coletor {d['coletor']}")
+    return True
+
+
+def juntar(pastas, destino=None, forcar=False, ensaio=False, log=print, agora=None):
     """Devolve 0 (juntado), NAO_ACABOU ou RECUSADO (já havia uma gravação juntada no destino)."""
     pastas = [pathlib.Path(p) for p in pastas if pathlib.Path(p).is_dir()]
     destino = pathlib.Path(destino) if destino else H.AV.bruto
-    agora = dt.datetime.now()
+    agora = agora or dt.datetime.now()
     br = sorted(primeiros(C.registros(pastas, "leituras_br"), lambda l: l["h"]).values(), key=lambda l: l["h"])
     if not (forcar or ensaio or C.acabou(br, agora)):
         fechou = C.fim_da_apuracao(br)
@@ -103,6 +126,9 @@ def juntar(pastas, destino=None, forcar=False, ensaio=False, log=print):
                                             "depois." if fechou else "o TSE ainda não fechou a totalização."))
         return NAO_ACABOU
     if (destino / "leituras_oficiais.json").exists() and not forcar:
+        if not (destino / "previsoes.json").exists() and _forecast(pastas, destino, log):
+            log(f"{destino} já tinha a gravação juntada: acrescentados só o forecast da noite e o mapa do fim.")
+            return 0
         log(f"{destino} já tem uma gravação juntada; para refazer, --forcar.")
         return RECUSADO
     destino.mkdir(parents=True, exist_ok=True)
@@ -131,6 +157,7 @@ def juntar(pastas, destino=None, forcar=False, ensaio=False, log=print):
             _historico(destino, final, vistas, municipios)
         except Exception as e:  # derivado: não segura o resto
             log(f"   historico_estimado não saiu: {e!r}")
+    _forecast(pastas, destino, log)
 
     jobs = [json.loads(j.read_text("utf-8")) for p in pastas for j in sorted(p.glob("*/job.json"))]
     _json(destino / "coleta.json", {
