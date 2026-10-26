@@ -7,5 +7,10 @@
  "prazo": "2026-10-26T05:33:20",
  "ensaio": false,
  "runner": "GitHub Actions 1000000539",
- "inicio": "2026-10-25T23:52:42"
+ "inicio": "2026-10-25T23:52:42",
+ "fim": "2026-10-26T00:21:21",
+ "rodadas": 29,
+ "falhas": 0,
+ "codigo": 0,
+ "acabou": false
 }
