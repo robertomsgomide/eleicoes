@@ -1,0 +1,4 @@
+{"h":"2026-10-25T21:56:40","s":0.8,"ok":true,"pst":99.962143063,"rec":499000,"novas":0,"mun":0,"falhas_mun":0,"atrasados":11,"ufs":0,"falhas_uf":[],"falhas_secoes":[]}
+{"h":"2026-10-25T21:57:40","s":1.0,"ok":true,"pst":99.970555716,"rec":499000,"novas":0,"mun":1,"falhas_mun":0,"atrasados":11,"ufs":2,"falhas_uf":[],"falhas_secoes":[]}
+{"h":"2026-10-25T21:58:40","s":1.0,"ok":true,"pst":99.970756017,"rec":499000,"novas":0,"mun":1,"falhas_mun":0,"atrasados":11,"ufs":0,"falhas_uf":[],"falhas_secoes":[]}
+{"h":"2026-10-25T21:59:40","s":1.8,"ok":true,"pst":99.972158126,"rec":499067,"novas":67,"mun":7,"falhas_mun":0,"atrasados":14,"ufs":2,"falhas_uf":[],"falhas_secoes":[]}
