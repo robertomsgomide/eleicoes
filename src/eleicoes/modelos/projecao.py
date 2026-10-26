@@ -318,11 +318,29 @@ def _rms(erros, pesos=None):
     return math.sqrt(sum(w * e * e for w, e in zip(pesos, erros)) / sum(pesos))
 
 
+def _distribuicao(con, ano, real):
+    """Só a geografia: com o total nacional das urnas, o desvio típico da % do petismo em cada região, UF e município
+    (municípios ponderados pelos votos) e quantos lugares caem no intervalo de 80% do modelo."""
+    s = secoes(con, ano)
+    partes = distribuir(s, real["petismo"] / 100)
+    validos = s.agregar(s.validos, "municipio")
+    mun_real, mun = _municipios_2t(con, ano), s.parte(partes, "municipio")
+    comuns = [m for m in mun if m in mun_real]
+    out = {"municipios": round(_rms([mun[m] - mun_real[m] for m in comuns], [validos[m] for m in comuns]), 2)}
+    for nome, nivel, erro in NIVEIS:
+        proj = s.parte(partes, nivel)
+        outros = s.parte(s.outros / s.validos, nivel)
+        erros = {k: proj[k] - real[nome][k] for k in real[nome]}
+        out[nome] = round(_rms(list(erros.values())), 2)
+        out[f"{nome}_no_intervalo"] = round(sum(abs(e) <= Z80 * erro * outros[k] for k, e in erros.items()) / len(erros), 3)
+    return out
+
+
 def validar(con, res, anos):
-    """Os erros de cada parte da projeção nos anos que já tiveram 2º turno (2018 e 2022).
+    """Os erros de cada parte da projeção nos anos que já tiveram 2º turno (2018, 2022 e 2026).
 
     - distribuição: dado o total nacional verdadeiro, quanto erra a % do petismo em cada região, UF e município
-      (desvio típico; municípios ponderados pelos votos) e quantas UFs caem no intervalo de 80% do modelo;
+      (`_distribuicao`); só com os votos de cada seção do 2º turno (None em 2026 até o TSE publicá-los);
     - total do país: o erro do ponto de partida (e, para comparar, o das pesquisas de 2º turno em que ele se baseia,
       tomadas diretamente), o da projeção a cada dia e quantos dias o resultado caiu no intervalo de 80%;
     - véspera: com a projeção da véspera, quantas UFs caíram no intervalo de 80% e o erro típico por UF.
@@ -330,26 +348,13 @@ def validar(con, res, anos):
     out = {}
     for ano, p in anos.items():
         real = p["resultado"]
-        if real is None or not votacao_secao.fonte_secoes(int(ano), 2):
+        if real is None:
             continue
-        s = secoes(con, int(ano))
-        partes = distribuir(s, real["petismo"] / 100)
-        validos = s.agregar(s.validos, "municipio")
-        mun_real, mun = _municipios_2t(con, int(ano)), s.parte(partes, "municipio")
-        comuns = [m for m in mun if m in mun_real]
-        distribuicao = {"municipios": round(_rms([mun[m] - mun_real[m] for m in comuns], [validos[m] for m in comuns]), 2)}
-        for nome, nivel, erro in NIVEIS:
-            proj = s.parte(partes, nivel)
-            outros = s.parte(s.outros / s.validos, nivel)
-            erros = {k: proj[k] - real[nome][k] for k in real[nome]}
-            distribuicao[nome] = round(_rms(list(erros.values())), 2)
-            distribuicao[f"{nome}_no_intervalo"] = round(
-                sum(abs(e) <= Z80 * erro * outros[k] for k, e in erros.items()) / len(erros), 3)
         erros_dia = [d["petismo"] - real["petismo"] for d in p["serie"]]
         dentro = [d["inf"] <= real["petismo"] <= d["sup"] for d in p["serie"]]
         vespera = {k: (v["petismo"] - real["ufs"][k], v["inf"] <= real["ufs"][k] <= v["sup"]) for k, v in p["ufs"].items()}
         out[ano] = {
-            "distribuicao": distribuicao,
+            "distribuicao": _distribuicao(con, int(ano), real) if votacao_secao.fonte_secoes(int(ano), 2) else None,
             "partida": round(p["partida"]["petismo"] - real["petismo"], 2),
             "segundo_turno_nas_pesquisas": round(p["partida"]["segundo_turno_nas_pesquisas"] - real["petismo"], 2),
             "projecao": {"medio": round(sum(map(abs, erros_dia)) / len(erros_dia), 2), "maximo": round(max(map(abs, erros_dia)), 2),
@@ -398,7 +403,7 @@ def _pct(v, casas=1):
 
 
 def relatorio(dados):
-    """docs/validacao_projecao.md: a projeção atual e os erros do método em 2018 e 2022."""
+    """docs/validacao_projecao.md: a projeção de cada ano e os erros do método nos anos já decididos."""
     v = dados["validacao"]
     linhas = ["# Validação da projeção do 2º turno", "",
               f"> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em {dt.datetime.now():%d/%m/%Y %H:%M}. Não editar à mão.", "",
@@ -412,7 +417,7 @@ def relatorio(dados):
         real = _pct(p["resultado"]["petismo"], 2) if p["resultado"] else "–"
         linhas.append(f"| {ano} | {dt.date.fromisoformat(a['data']):%d/%m} | {a['pesquisas']} | {_pct(p['partida']['petismo'], 2)} | "
                       f"{_pct(a['petismo'], 2)} | {_pct(a['inf'])} a {_pct(a['sup'])} | {_pct(100 * a['chance'], 0)} | {real} |")
-    linhas += ["", "## Erros em 2018 e 2022", "",
+    linhas += ["", "## Erros nos anos já decididos", "",
                "Erro = projeção − urnas, em pontos percentuais da parte do petismo nos votos válidos.", "",
                "| Ano | Pesquisas de 2º turno da véspera do 1º | Ponto de partida | Projeção: erro médio · máximo · na véspera | Dias com o resultado no intervalo de 80% | Véspera, UFs: erro típico · no intervalo de 80% |",
                "|---|--:|--:|---|--:|---|"]
@@ -428,7 +433,9 @@ def relatorio(dados):
                "a parte dos lugares cujo resultado caiu no intervalo de 80% do modelo.", "",
                "| Ano | Regiões | UFs | Municípios | Regiões no intervalo | UFs no intervalo |", "|---|--:|--:|--:|--:|--:|"]
     for ano, e in v.items():
-        d = e["distribuicao"]
+        if (d := e["distribuicao"]) is None:
+            linhas.append(f"| {ano} | sai com os votos de cada seção do 2º turno, que o TSE publica depois da eleição | | | | |")
+            continue
         linhas.append(f"| {ano} | {_num(d['regioes'])} | {_num(d['ufs'])} | {_num(d['municipios'])} | "
                       f"{_pct(100 * d['regioes_no_intervalo'], 0)} | {_pct(100 * d['ufs_no_intervalo'], 0)} |")
     sens = sensibilidade(dados)

@@ -117,8 +117,8 @@ def tse(monkeypatch, tmp_path):
                         ("_municipios", None), ("_erro_municipios", 0.0)):
         monkeypatch.setattr(H, nome, vazio)
     monkeypatch.setattr(H, "CACHE", tmp_path / "cache")
-    # a divulgação já começou: as rodadas leem os municípios
-    monkeypatch.setattr(C, "AV", dataclasses.replace(C.AV, inicio=dt.datetime.now() - dt.timedelta(hours=1)))
+    # a divulgação já começou (às 17h de 25/10, antes das leituras falsas): as rodadas leem os municípios
+    monkeypatch.setattr(C, "AV", dataclasses.replace(C.AV, inicio=h(17, 0)))
     for uf in H.UFS:  # todas as UFs existem; só o Acre tem seções neste teste
         falso.publicar(H.url_secoes(uf), config_secoes(uf, {}))
     return falso
@@ -295,7 +295,7 @@ def test_juntar_fica_com_o_que_cada_coletor_viu_primeiro_e_o_noite_le(tmp_path, 
     destino = tmp_path / "bruto" / "ao_vivo" / "ele2026-6258"
     nada = lambda *_: None  # noqa: E731
 
-    assert J.juntar([tmp_path / "ramo-a", tmp_path / "ramo-b"], destino, log=nada) == J.NAO_ACABOU
+    assert J.juntar([tmp_path / "ramo-a", tmp_path / "ramo-b"], destino, log=nada, agora=h(17, 10)) == J.NAO_ACABOU
     assert J.juntar([tmp_path / "ramo-a", tmp_path / "ramo-b", tmp_path / "sem-ramo"], destino, forcar=True,
                     log=nada) == 0
     br = json.loads((destino / "leituras_oficiais.json").read_text("utf-8"))
@@ -311,5 +311,46 @@ def test_juntar_fica_com_o_que_cada_coletor_viu_primeiro_e_o_noite_le(tmp_path, 
     assert J.juntar([tmp_path / "ramo-a"], destino, ensaio=True, log=nada) == J.RECUSADO  # não refaz sem --forcar
 
     monkeypatch.setattr(config, "BRUTO", tmp_path / "bruto")
-    n = noite.gerar(2026, 2)  # a mesma leitura do 1º turno vale para o 2º
-    assert n["oficial"]["petismo"] == [55.0, 53.0, 52.0] and n["oficial"]["t"] == [2.0, 4.0, 6.0]
+    ap = noite.apuracao(2026, 2)  # as leituras gravadas, no formato da apuração exata, até os boletins de urna
+    assert ap["tipo"] == "gravada" and ap["t"] == [2, 4, 6]
+    assert ap["regioes"]["Brasil"]["petismo"] == [55, 53, 52] and ap["regioes"]["Norte"]["petismo"] == [55, 55, 55]
+    assert noite.gerar(2026, 2, {"2026": {"2": {"Brasil": {"petismo": 52, "validos": 100}}}}) is None  # sem forecast
+
+
+def test_juntar_guarda_o_forecast_da_noite_e_o_mapa_do_fim(tmp_path, monkeypatch):
+    def previsao(hora, apurado, petismo):
+        return {"h": hora, "pst": apurado, "apurado": apurado, "petismo": petismo, "inf": petismo - 1,
+                "sup": petismo + 1, "chance": 0.9, "vinf": 0, "vantagem": 1, "vsup": 2, "votos_petismo": 60,
+                "votos_bolsonarismo": 40}
+
+    lida = C.leitura(resultado("br", "17:02:00", 1, 1, 55, 45, pst=10.0), h(17, 2, 20))
+    for ramo, previsoes, ultima in (
+            ("ramo-a", [previsao("2026-10-25T17:02:00", 1.0, 51.0)], "2026-10-25T17:02:00"),
+            ("ramo-b", [previsao("2026-10-25T17:02:00", 2.0, 52.0), previsao("2026-10-25T17:04:00", 3.0, 53.0)],
+             "2026-10-25T17:04:00")):
+        C.Gravador(tmp_path / ramo / "1.1-1").json("leituras_br", lida)
+        dados = {"coletor": ramo[-1], "tse": {"h": ultima}, "atualizado": ultima, "previsoes": previsoes}
+        (tmp_path / ramo / "dados.json").write_text(json.dumps(dados), "utf-8")
+        (tmp_path / ramo / "mapa.json").write_text(json.dumps({"coletor": ramo[-1]}), "utf-8")
+    monkeypatch.setattr(J, "_finais", lambda destino, log: None)  # sem rede
+    destino = tmp_path / "bruto" / "ao_vivo" / "ele2026-6258"
+    ramos = [tmp_path / "ramo-a", tmp_path / "ramo-b"]
+    nada = lambda *_: None  # noqa: E731
+
+    assert J.juntar(ramos, destino, forcar=True, log=nada) == 0
+    # de cada leitura do país, um forecast: o feito com mais seções lidas; o mapa, do coletor mais recente
+    assert [(f["h"], f["coletor"], f["petismo"]) for f in json.loads((destino / "previsoes.json").read_text("utf-8"))] \
+        == [("2026-10-25T17:02:00", "b", 52.0), ("2026-10-25T17:04:00", "b", 53.0)]
+    assert json.loads((destino / "mapa.json").read_text("utf-8")) == {"coletor": "b"}
+    # numa gravação juntada antes de o forecast ser guardado, só ele entra; depois, nada é refeito sem --forcar
+    (destino / "previsoes.json").unlink()
+    (destino / "mapa.json").unlink()
+    assert J.juntar(ramos, destino, ensaio=True, log=nada) == 0 and (destino / "previsoes.json").exists()
+    assert J.juntar(ramos, destino, ensaio=True, log=nada) == J.RECUSADO
+
+    monkeypatch.setattr(config, "BRUTO", tmp_path / "bruto")
+    monkeypatch.setattr(noite.forecast, "projecao_da_vespera", lambda ano: (0.4876, 1.42))
+    monkeypatch.setattr(noite.votacao_secao, "fonte_secoes", lambda ano, turno: None)  # sem os votos de cada seção
+    n = noite.gerar(2026, 2, {"2026": {"2": {"Brasil": {"petismo": 52, "validos": 100}}}})
+    assert n["real"] == 52.0 and n["projecao"] == 48.76 and n["mapa"] == {"coletor": "b"}
+    assert n["forecast"]["t"] == [2, 4] and n["forecast"]["apurado"] == [2.0, 3.0] and n["forecast"]["petismo"] == [52.0, 53.0]

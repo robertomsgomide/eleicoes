@@ -88,12 +88,7 @@
   }
 }
 
-/* Resultado que ainda não saiu: no placar e no lugar de um gráfico ou do mapa */
-.placar .grande.pendente {
-  font-size: 1.5rem;
-  line-height: 2.42rem; /* a mesma altura do número (2.2rem × 1.1): o cartão não muda de tamanho */
-  color: var(--theme-foreground-muted);
-}
+/* Gráfico que ainda não tem dados: no lugar dele */
 .nao-divulgado {
   display: grid;
   place-content: center;
@@ -191,72 +186,6 @@
 .selo.estimado {
   border-style: dashed;
 }
-/* Durante a apuração: um ponto que pulsa devagar (parado para quem pede menos movimento) */
-.selo.ao-vivo {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--theme-foreground);
-}
-.selo.ao-vivo::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--petismo);
-  animation: pulso 2s ease-in-out infinite;
-}
-@keyframes pulso {
-  50% {
-    opacity: 0.25;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .selo.ao-vivo::before {
-    animation: none;
-  }
-}
-
-/* O forecast embaixo do número de cada placar, durante a apuração */
-.placar .previsao {
-  font-size: 13px;
-  color: var(--theme-foreground-alt);
-  font-variant-numeric: tabular-nums;
-}
-
-/* A faixa embaixo dos placares durante a apuração: quanto já foi apurado, a chance pelo forecast e a hora */
-.faixa-ao-vivo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 18px;
-  margin: -4px 0 18px;
-  font: 13px/1.4 var(--sans-serif);
-  color: var(--theme-foreground-alt);
-  font-variant-numeric: tabular-nums;
-}
-.faixa-apurado {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.faixa-barra {
-  display: inline-block;
-  width: 120px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--theme-foreground-faintest);
-  overflow: hidden;
-}
-.faixa-barra i {
-  display: block;
-  height: 100%;
-  background: var(--theme-foreground-muted);
-}
-.faixa-hora {
-  color: var(--theme-foreground-muted);
-}
-
 .nota {
   font-size: 13px;
   color: var(--theme-foreground-muted);
