@@ -37,7 +37,7 @@ def gerar(log=print):
                 escrever(f"apuracao_{ano}_t{turno}.json", apuracao.gerar(con, ano, turno), log)
             elif (ap := noite.apuracao(ano, turno)) is not None:  # as leituras gravadas na noite, até os boletins saírem
                 escrever(f"apuracao_{ano}_t{turno}.json", ap, log)
-            if (n := noite.gerar(ano, turno, res)) is not None:  # o forecast da noite e, até os votos por seção, o mapa
+            if (n := noite.gerar(con, ano, turno, res)) is not None:  # o forecast da noite e, até os votos por seção, o mapa
                 escrever(f"noite_{ano}_t{turno}.json", n, log)
     escrever("validacao_estimativa.json", apuracao.validar_estimativa(con), log)
     mapa.gerar(lambda nome, dados: escrever(nome, dados, log), log)

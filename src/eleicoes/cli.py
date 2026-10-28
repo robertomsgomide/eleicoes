@@ -123,6 +123,7 @@ def pesquisas(anos, atualizar=False):
 
 def baixar(anos):
     from eleicoes.coleta import ibge, tse
+    from eleicoes.tratamento import votacao_secao
     print("Baixando para dados/bruto (≈8 GB na primeira vez). Pode interromper: rodar de novo retoma.")
     for ano in anos:
         print(f"\n{ano} · totais oficiais por município e zona")
@@ -132,6 +133,10 @@ def baixar(anos):
         if tse.boletins_publicados(ano):
             print(f"{ano} · boletins de urna (1º e 2º turno, por UF)")
             tse.boletins(ano)
+            # A votação por seção já baixada continua como conferência dos boletins (o TSE a republica depois do 2º turno)
+            if votacao_secao.origem(ano).exists():
+                print(f"{ano} · votação por seção")
+                tse.votacao_secao(ano)
         else:
             print(f"{ano} · boletins de urna ainda não publicados: votos por seção do arquivo de votação por seção")
             tse.votacao_secao(ano)

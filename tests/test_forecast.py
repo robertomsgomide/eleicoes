@@ -235,12 +235,14 @@ def test_a_apuracao_ao_vivo_tem_o_brasil_do_arquivo_do_pais_e_as_regioes_pela_so
 
     br = [l("br", "17:02:10", 2, 10, 50, 70), l("br", "17:05:00", 6, 10, 200, 180)]
     ufs = {"ba": [l("ba", "17:02:00", 1, 4, 40, 10), l("ba", "17:05:00", 3, 4, 150, 60)],
-           "sc": [l("sc", "17:03:00", 2, 5, 15, 60)]}
+           "sc": [l("sc", "17:03:00", 2, 5, 15, 60)],
+           "mt": [l("mt", "16:04:00", 1, 3, 10, 30)]}                 # a hora local de MT: 17h04 em Brasília
     s = painel.serie(br, ufs, inicio, {"petismo": "13", "bolsonarismo": "22"})
-    assert s["t"] == [2, 3, 5] and s["inicio"] == "2026-10-25T17:00" and s["tipo"] == "ao vivo"
-    assert s["regioes"]["Brasil"]["petismo"] == [50, 50, 200]          # o arquivo do país, o último de cada minuto
-    assert s["regioes"]["Nordeste"]["secoes"] == [1, 1, 3]             # cada UF vale até a leitura seguinte dela
-    assert s["regioes"]["Sul"]["bolsonarismo"] == [0, 60, 60]
+    assert s["t"] == [2, 3, 4, 5] and s["inicio"] == "2026-10-25T17:00" and s["tipo"] == "ao vivo"
+    assert s["regioes"]["Brasil"]["petismo"] == [50, 50, 50, 200]      # o arquivo do país, o último de cada minuto
+    assert s["regioes"]["Nordeste"]["secoes"] == [1, 1, 1, 3]          # cada UF vale até a leitura seguinte dela
+    assert s["regioes"]["Sul"]["bolsonarismo"] == [0, 60, 60, 60]
+    assert s["regioes"]["Centro-Oeste"]["secoes"] == [0, 0, 1, 1]
     assert s["totais"]["Brasil"]["secoes"] == 10 and s["totais"]["Nordeste"]["secoes"] == 4
     assert s["viradas"] == [{"t": 5, "pct_secoes": 60.0, "lider": "petismo"}]
 
