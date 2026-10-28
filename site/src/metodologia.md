@@ -4,7 +4,7 @@ toc: true
 ---
 
 ```js
-import {COR, graficoCampos, graficoLugares, graficoProjecao, legenda, serieDaNoite} from "./components/graficos.js";
+import {COR, graficoCampos, graficoLugares, graficoProjecao, legenda, pausaDaApuracao, serieDaNoite} from "./components/graficos.js";
 import {decimal, hora, num, pct, pp} from "./components/formato.js";
 const validacao = FileAttachment("data/validacao_estimativa.json").json();
 const eleicoes = FileAttachment("data/eleicoes.json").json();
@@ -38,11 +38,11 @@ Os demais candidatos aparecem como "outros". Como nos resultados do TSE, os perc
 
 ## Conferência com o resultado oficial
 
-A soma dos votos de todos os boletins de urna é comparada, candidato a candidato, com o total oficial do TSE no Brasil, em cada estado e em cada zona eleitoral, nos dois turnos de 2018 e de 2022 e no 1º turno de 2026. Tudo bate exatamente, com uma única exceção: no 1º turno de 2018, em Pastos Bons (MA), zona 17, o total oficial tem 76 votos a mais do que os boletins publicados (Haddad +46, Bolsonaro +20, outros +10). Os boletins dessa zona estão completos e consistentes, e os arquivos públicos não mostram de onde vêm esses votos. A diferença fica registrada no código, e qualquer outra divergência interrompe o processamento.
+A soma dos votos de todos os boletins de urna é comparada, candidato a candidato, com o total oficial do TSE no Brasil, em cada estado e em cada zona eleitoral, nos dois turnos de 2018, de 2022 e de 2026. Tudo bate exatamente, com uma única exceção: no 1º turno de 2018, em Pastos Bons (MA), zona 17, o total oficial tem 76 votos a mais do que os boletins publicados (Haddad +46, Bolsonaro +20, outros +10). Os boletins dessa zona estão completos e consistentes, e os arquivos públicos não mostram de onde vêm esses votos. A diferença fica registrada no código, e qualquer outra divergência interrompe o processamento.
 
 Em 2026, o total oficial por município e zona saiu primeiro sem os votos de Presidente e foi republicado com eles em 7 de outubro; até lá, a conferência foi com o resultado final da totalização em cada estado. Os boletins do 1º turno, publicados em 6 de outubro, batem com o total oficial em todas as zonas e, seção por seção, com a votação por seção, em todas as 499.206 seções. Os 5.246 votos de Leonardo Alves de Araújo (28), cuja candidatura foi indeferida, contam como nulos, como no resultado oficial, que não os traz.
 
-O 2º turno de 2026 ainda não tem os boletins de urna nem o total oficial por município e zona, que o TSE publica nos dias depois da eleição. Até lá, o resultado vem dos arquivos finais da totalização no site de resultados do TSE, estado por estado; a conferência seção a seção entra quando os boletins saírem.
+Os boletins do 2º turno, publicados em 27 de outubro, também batem com o total oficial em todas as zonas e, seção por seção, com a votação por seção, em todas as 499.205 seções. Até eles saírem, o resultado do 2º turno veio dos arquivos finais da totalização no site de resultados do TSE, estado por estado, com os mesmos votos de cada candidato.
 
 ## Apuração no tempo
 
@@ -72,7 +72,7 @@ display(html`<div class="tabela"><table>
 
 A participação de cada candidato ao longo do % apurado é bem reproduzida: a **ordem** em que as seções chegam se repete de uma eleição para outra. O **relógio** não: o 2º turno transmite os boletins muito mais rápido que o 1º, então o % apurado em cada horário erra bastante entre turnos. ${teste26 ? `De uma eleição para a outra, no mesmo turno, o quadro se repete: no 1º turno de 2026, a participação de cada candidato erra em média ${decimal(erroCampo(teste26, "media"), 1)} ponto (no máximo ${decimal(erroCampo(teste26, "max"), 1)}), e o % apurado em cada horário, ${decimal(teste26.erro_pct_apurado.media, 0)} pontos em média (no máximo ${decimal(teste26.erro_pct_apurado.max, 0)}). Por isso, em 2018, o eixo padrão é o % apurado.` : ""}
 
-**Antes dos boletins.** Nos dias entre a eleição e a publicação dos boletins de urna, a noite de um turno aparece como este projeto a gravou ao vivo: o país, pelas atualizações do total oficial do país; cada região, pela soma dos totais oficiais dos seus estados. Ela tem o selo "gravada ao vivo" (em Comparações, "provisória"), e a curva exata a substitui quando os boletins saem. Na noite do 2º turno de 2026, o total do país ficou parado em 0,4% das seções entre 17h07 e 19h04, enquanto os totais dos estados seguiam andando, e só alcançou a soma deles perto das 20h30; até os boletins, a curva do país mostra o total como o TSE o publicou.
+**Antes dos boletins.** Nos dias entre a eleição e a publicação dos boletins de urna, a noite de um turno aparece como este projeto a gravou ao vivo: o país, pelas atualizações do total oficial do país; cada região, pela soma dos totais oficiais dos seus estados. Ela tem o selo "gravada ao vivo" (em Comparações, "provisória"), e a curva exata a substitui quando os boletins saem, como no 2º turno de 2026 desde 28 de outubro. A curva gravada daquela noite tinha um erro: os arquivos de cada estado no site de resultados do TSE trazem a hora local do estado (no Acre, duas horas atrás da de Brasília; no Amazonas, em Mato Grosso, em Mato Grosso do Sul, em Rondônia e em Roraima, uma hora), e ela os lia como se estivessem no horário de Brasília. Por isso, parecia que os totais dos estados seguiam andando enquanto o total do país ficou parado, das 17h07 às 19h04, e que o país ficou atrás da soma dos estados até perto das 20h30. Os boletins de urna mostram que nenhum chegou ao TSE das 17h07 às 19h03 (<a href="./2026#a-prorrogacao-e-a-pausa-na-apuracao">a prorrogação e a pausa</a>).
 
 ## Mapa
 
@@ -280,12 +280,10 @@ const erroMedio26 = desde(2).reduce((s, f) => s + Math.abs(f.petismo - real26), 
 const naFaixa26 = desde(1).filter((f) => f.inf <= real26 && real26 <= f.sup).length / desde(1).length;
 const chanceMin26 = Math.min(...desde(1).map((f) => (real26 >= 50 ? f.chance : 1 - f.chance)));
 const vence26 = real26 >= 50 ? "petismo" : "bolsonarismo";
-// a contagem do TSE no momento de cada forecast (a atualização do total do país que ele acompanhava)
-const contagem26 = (f) => {
-  const i = ap26t2.t.findLastIndex((t) => t <= f.minuto);
-  const b = ap26t2.regioes.Brasil;
-  return (100 * b.petismo[i]) / b.validos[i];
-};
+// a contagem do TSE no momento de cada forecast: a atualização do total do país que ele acompanhava, gravada com ele
+const contagem26 = (f) => f.contagem;
+// o trecho em que o TSE suspendeu o recebimento dos boletins, a faixa cinza do gráfico
+const pausa26 = pausaDaApuracao(ap26t2);
 const errosContagem26 = desde(2).map((f) => ({f, erro: contagem26(f) - real26}));
 const piorContagem26 = errosContagem26.reduce((a, x) => (Math.abs(x.erro) > Math.abs(a.erro) ? x : a));
 const viradas26 = ap26t2.viradas;
@@ -301,8 +299,8 @@ const salto26 = desde(1).filter((f) => f.apurado < 2).reduce((a, f) => (f.petism
 <div class="card">
   <h2>A noite do 2º turno de 2026, ao vivo</h2>
   <h3>${ap26t2.tipo === "gravada" ? html`<span class="selo">gravada ao vivo</span>` : html`<span class="selo">exata</span>`} · % dos votos válidos já apurados e, tracejado, o resultado final que o forecast previa a cada momento, com a faixa de 80%</h3>
-  ${legenda([{nome: nomes26.petismo, cor: COR.petismo}, {nome: nomes26.bolsonarismo, cor: COR.bolsonarismo}, {nome: "forecast, como apareceu ao vivo, com a faixa de 80%", cor: "var(--theme-foreground-muted)", estilo: "faixa"}])}
-  ${resize((width) => graficoCampos(ap26t2, {eixo: "hora", medida: "pct", width, nomes: nomes26, previsao: {serie: noite26s}}))}
+  ${legenda([{nome: nomes26.petismo, cor: COR.petismo}, {nome: nomes26.bolsonarismo, cor: COR.bolsonarismo}, {nome: "forecast, como apareceu ao vivo, com a faixa de 80%", cor: "var(--theme-foreground-muted)", estilo: "faixa"}, ...(pausa26 ? [{nome: "nenhum boletim chegou ao TSE", cor: "var(--theme-foreground-muted)", estilo: "pausa"}] : [])])}
+  ${resize((width) => graficoCampos(ap26t2, {eixo: "hora", medida: "pct", width, nomes: nomes26, previsao: {serie: noite26s}, pausa: pausa26}))}
 </div>
 
 <p class="nota">Às ${quando(ap26t2, cedo26.minuto)}, com ${pct(cedo26.apurado, 0)} das seções apuradas, o forecast dava ${nomes26.petismo} com ${pct(cedo26.petismo, 1)} (80% de chance entre ${pct(cedo26.inf, 1)} e ${pct(cedo26.sup, 1)}); as urnas deram ${pct(real26, 2)}, e a projeção da véspera, ${pct(noite26.projecao, 2)}. ${viradas26.length ? `A contagem do TSE mudou de líder ${vezes(viradas26.length)} (${viradas26.map((v) => `${nomes26[v.lider]} às ${quando(ap26t2, v.t)}`).join(", ")}); de 1% apurado em diante, o forecast deu a vitória a ${nomes26[vence26]} o tempo todo, com chance de ${chanceMin26 >= 0.999 ? "mais de 99,9%" : `pelo menos ${pct(100 * chanceMin26, 1)}`}.` : ""}</p>
@@ -321,10 +319,10 @@ display(html`<div class="tabela"><table>
 
 <p class="nota">Erro: menos o resultado das urnas (${pct(real26, 2)} para ${nomes26.petismo}), em pontos percentuais. Seções apuradas e contagem: o total do país no TSE na atualização que cada forecast acompanhava. De ${pct(2, 0)} apurado em diante, o forecast ficou a no máximo ${decimal(erroMax26, 2)} ponto do resultado (em média, ${decimal(erroMedio26, 2)}); a contagem chegou a ficar a ${decimal(Math.abs(piorContagem26.erro), 1)} pontos dele (às ${quando(ap26t2, piorContagem26.f.minuto)}, com ${pct(piorContagem26.f.apurado, 0)} apurado). De 1% em diante, o resultado ficou dentro da faixa de 80% em ${pct(100 * naFaixa26, 0)} dos momentos.</p>
 
-**O ponto fraco: o começo da noite.** Às 17h07, com 0,4% das seções apuradas, o total do país no TSE parou e só voltou a andar às 19h04; os totais dos estados e os resultados dos municípios continuaram saindo, e o forecast seguiu com eles. O arquivo com o horário de chegada de cada seção também atrasou: quando o país voltou a andar, só cerca de um quinto das seções já totalizadas tinha o horário publicado. O forecast punha o que o total de cada UF tinha a mais que os municípios lidos nas seções que deviam ter chegado primeiro, adivinhadas pela ordem do 1º turno, e o swing tirado delas entrava no modelo como se tivesse sido medido. Por isso, às ${quando(ap26t2, salto26.minuto)}, ele chegou a dar ${pct(salto26.petismo, 1)} a ${nomes26.petismo}, com uma faixa de 80% estreita demais (${pct(salto26.inf, 1)} a ${pct(salto26.sup, 1)}), e só voltou para perto do resultado com os horários chegando, por volta das 19h15. Ainda naquela noite, a regra mudou no código: a sobra de uma UF só entra quando o TSE já mostra recebidas, fora dos municípios lidos, ao menos tantas seções quantas o total tem a mais. Com ela, as noites de 2018 e 2022 refeitas não mudam. Os coletores, que rodavam com o código da manhã, seguiram com a regra antiga até o fim, e o registro acima é o que eles mostraram.
+**O ponto fraco: o começo da noite.** Às 17h07, com 0,4% das seções apuradas, o TSE suspendeu o recebimento dos boletins durante a prorrogação da votação, e nada mudou até as 19h03: nem o total do país, nem os dos estados, nem os dos municípios (<a href="./2026#a-prorrogacao-e-a-pausa-na-apuracao">a prorrogação e a pausa</a>). Quando o recebimento voltou, os boletins retidos entraram em rajada, e o arquivo com o horário de chegada de cada seção ficou para trás: quando o país voltou a andar, só cerca de um quinto das seções já totalizadas tinha o horário publicado. O forecast punha o que o total de cada UF tinha a mais que os municípios lidos nas seções que deviam ter chegado primeiro, adivinhadas pela ordem do 1º turno, e o swing tirado delas entrava no modelo como se tivesse sido medido. Por isso, às ${quando(ap26t2, salto26.minuto)}, ele chegou a dar ${pct(salto26.petismo, 1)} a ${nomes26.petismo}, com uma faixa de 80% estreita demais (${pct(salto26.inf, 1)} a ${pct(salto26.sup, 1)}), e só voltou para perto do resultado com os horários chegando, por volta das 19h15. Ainda naquela noite, a regra mudou no código: a sobra de uma UF só entra quando o TSE já mostra recebidas, fora dos municípios lidos, ao menos tantas seções quantas o total tem a mais. Com ela, as noites de 2018 e 2022 refeitas não mudam. Os coletores, que rodavam com o código da manhã, seguiram com a regra antiga até o fim, e o registro acima é o que eles mostraram.
 
-**O que é estimado.** O forecast é deste estudo, não do TSE, e o resultado oficial é o do TSE. No 2º turno de 2026, até o TSE publicar os votos de cada seção, o mapa mostra em cada município o resultado oficial dele; a divisão desses votos entre os locais de votação do município é estimada pela mesma conta do forecast (o 1º turno de cada local e o swing do município), e aparece com o selo "estimada".
+**O que é estimado.** O forecast é deste estudo, não do TSE, e o resultado oficial é o do TSE. No 2º turno de 2026, até o TSE publicar os votos de cada seção, o mapa mostrou em cada município o resultado oficial dele, com a divisão desses votos entre os locais de votação estimada pela mesma conta do forecast (o 1º turno de cada local e o swing do município); desde 28 de outubro, mostra os votos de cada local.
 
 ## Horários
 
-Todas as horas estão no horário de Brasília. Nos arquivos do TSE, a chegada do boletim está no horário de Brasília, e a abertura e o encerramento da urna, no horário local da seção. Em 2018, cada estado votou das 8h às 17h no horário local e a divulgação começou às 19h de Brasília; desde 2022, todo o país vota das 8h às 17h de Brasília e a divulgação começa às 17h.
+Todas as horas estão no horário de Brasília. Nos arquivos do TSE, a chegada do boletim está no horário de Brasília, e a abertura e o encerramento da urna e a emissão do boletim, no horário local da seção. No site de resultados, o arquivo de cada estado também traz a hora local do estado. Em 2018, cada estado votou das 8h às 17h no horário local e a divulgação começou às 19h de Brasília; desde 2022, todo o país vota das 8h às 17h de Brasília e a divulgação começa às 17h.

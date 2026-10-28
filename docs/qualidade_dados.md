@@ -1,6 +1,6 @@
 # Qualidade dos dados
 
-> Gerado por `uv run eleicoes processar` em 07/10/2026 17:47. Não editar à mão.
+> Gerado por `uv run eleicoes processar` em 28/10/2026 15:19. Não editar à mão.
 
 ## 1. Boletins de urna × totais oficiais do TSE
 
@@ -13,6 +13,7 @@ Soma dos votos dos boletins de cada seção comparada com o total oficial do TSE
 | 2022 | 1º | 472.028 | 156.453.354 | 123.682.372 | 118.229.719 | 48,43% | 43,20% | nenhuma ✅ |
 | 2022 | 2º | 472.028 | 156.453.354 | 124.252.796 | 118.552.353 | 50,90% | 49,10% | nenhuma ✅ |
 | 2026 | 1º | 499.206 | 158.745.007 | 125.275.835 | 119.300.788 | 45,16% | 47,03% | nenhuma ✅ |
+| 2026 | 2º | 499.205 | 158.744.977 | 128.236.074 | 124.082.273 | 51,79% | 48,21% | nenhuma ✅ |
 
 Divergências conhecidas, conferidas uma a uma (`DIVERGENCIAS_CONHECIDAS` em `src/eleicoes/tratamento/oficial.py`):
 
@@ -27,6 +28,7 @@ O TSE publica os votos de cada seção em dois arquivos: a votação por seção
 | Ano | Turno | Seções | Seções com alguma diferença |
 |---|---|--:|---|
 | 2026 | 1º | 499.206 | nenhuma ✅ |
+| 2026 | 2º | 499.205 | nenhuma ✅ |
 
 ## 2. Horários
 
@@ -39,6 +41,7 @@ A chegada do boletim ao TSE está no horário de Brasília; abertura, encerramen
 | 2022 | 1º | 100,00% | 2022-10-02 02:09:48 | 2022-10-03 19:28:51 | 99,97% |
 | 2022 | 2º | 100,00% | 2022-10-30 01:20:48 | 2022-10-31 00:17:31 | 99,99% |
 | 2026 | 1º | 100,00% | 2026-10-04 17:08:44 | 2026-10-05 02:58:30 | 99,99% |
+| 2026 | 2º | 100,00% | 2026-10-25 17:05:10 | 2026-10-25 23:21:40 | 99,99% |
 
 ## 3. Tipos de urna
 
@@ -57,6 +60,7 @@ A chegada do boletim ao TSE está no horário de Brasília; abertura, encerramen
 | 2022 | 2º | APURADA | 472.027 | 1 |
 | 2022 | 2º | ANULADA | 1 | 1 |
 | 2026 | 1º | Apurada | 499.206 | 1 |
+| 2026 | 2º | Apurada | 499.205 | 1 |
 
 ## 4. Locais de votação
 
@@ -68,7 +72,8 @@ Cada seção com votos procurada no arquivo de locais de votação do mesmo ano 
 | 2018 | 2º | 453.706 | 100,00% | 82,38% |
 | 2022 | 1º | 471.010 | 100,00% | 94,43% |
 | 2022 | 2º | 471.010 | 100,00% | 94,42% |
-| 2026 | 1º | 497.897 | 100,00% | 99,45% |
+| 2026 | 1º | 497.897 | 100,00% | 99,42% |
+| 2026 | 2º | 497.897 | 100,00% | 99,41% |
 
 ## 5. Coordenadas completadas para o mapa
 
@@ -76,12 +81,12 @@ Como cada local de votação recebeu a posição (`src/eleicoes/tratamento/coord
 
 | Método | 2018 | 2022 | 2026 |
 |---|--:|--:|--:|
-| 0. coordenada do TSE para o próprio local | 81,78% (73.947 locais) | 94,38% (84.617 locais) | 99,46% (92.782 locais) |
-| 1. mesmo local em outra eleição | 16,55% (15.592 locais) | 4,64% (5.609 locais) | 0,08% (120 locais) |
-| 2. mesmo nome no município | 0,14% (217 locais) | 0,12% (174 locais) | 0,02% (26 locais) |
-| 3. mesmo endereço no município | 0,04% (124 locais) | 0,02% (26 locais) | 0,00% (9 locais) |
-| 4. aproximada pelo bairro | 0,67% (1.163 locais) | 0,37% (466 locais) | 0,14% (190 locais) |
-| 5. aproximada pela zona eleitoral | 0,81% (2.287 locais) | 0,47% (1.282 locais) | 0,29% (955 locais) |
+| 0. coordenada do TSE para o próprio local | 81,78% (73.949 locais) | 94,38% (84.618 locais) | 99,43% (92.746 locais) |
+| 1. mesmo local em outra eleição | 16,52% (15.557 locais) | 4,60% (5.573 locais) | 0,09% (125 locais) |
+| 2. mesmo nome no município | 0,14% (217 locais) | 0,13% (175 locais) | 0,03% (33 locais) |
+| 3. mesmo endereço no município | 0,04% (124 locais) | 0,02% (26 locais) | 0,00% (7 locais) |
+| 4. aproximada pelo bairro | 0,70% (1.191 locais) | 0,39% (491 locais) | 0,15% (217 locais) |
+| 5. aproximada pela zona eleitoral | 0,83% (2.292 locais) | 0,49% (1.291 locais) | 0,30% (998 locais) |
 | 6. aproximada pelo município | 0,00% (4 locais) | – | – |
 | 7. ponto dentro do município | 0,01% (6 locais) | 0,00% (5 locais) | 0,00% (5 locais) |
 
@@ -89,12 +94,12 @@ Erro de cada método, medido nos locais que têm coordenada do TSE: a coordenada
 
 | Método | 2018: mediana · 90% até · acima de 1 km | 2022: mediana · 90% até · acima de 1 km | 2026: mediana · 90% até · acima de 1 km |
 |---|---|---|---|
-| 1. mesmo local em outra eleição | 0,00 km · 0,00 km · 0,40% (n = 73.421) | 0,00 km · 0,00 km · 0,10% (n = 84.124) | 0,00 km · 0,03 km · 1,50% (n = 83.505) |
-| 2. mesmo nome no município | 0,00 km · 0,11 km · 6,70% (n = 9.183) | 0,00 km · 0,31 km · 7,30% (n = 8.408) | 0,01 km · 0,66 km · 9,00% (n = 7.258) |
-| 3. mesmo endereço no município | 0,00 km · 0,05 km · 2,30% (n = 4.571) | 0,00 km · 0,07 km · 2,60% (n = 4.330) | 0,00 km · 0,09 km · 2,60% (n = 4.042) |
-| 4. aproximada pelo bairro | 0,45 km · 1,14 km · 13,60% (n = 25.317) | 0,45 km · 1,12 km · 13,30% (n = 28.211) | 0,45 km · 1,13 km · 13,40% (n = 30.372) |
-| 5. aproximada pela zona eleitoral | 3,37 km · 21,46 km · 80,30% (n = 73.815) | 3,20 km · 21,08 km · 79,60% (n = 84.454) | 3,29 km · 21,74 km · 80,10% (n = 92.608) |
-| 6. aproximada pelo município | 5,14 km · 22,81 km · 83,80% (n = 73.835) | 4,89 km · 22,31 km · 83,00% (n = 84.474) | 4,96 km · 22,85 km · 83,40% (n = 92.628) |
+| 1. mesmo local em outra eleição | 0,00 km · 0,00 km · 0,40% (n = 73.423) | 0,00 km · 0,00 km · 0,10% (n = 84.116) | 0,00 km · 0,03 km · 1,60% (n = 83.403) |
+| 2. mesmo nome no município | 0,00 km · 0,11 km · 6,70% (n = 9.173) | 0,00 km · 0,31 km · 7,40% (n = 8.403) | 0,01 km · 0,66 km · 9,00% (n = 7.247) |
+| 3. mesmo endereço no município | 0,00 km · 0,05 km · 2,30% (n = 4.567) | 0,00 km · 0,07 km · 2,60% (n = 4.326) | 0,00 km · 0,08 km · 2,60% (n = 4.036) |
+| 4. aproximada pelo bairro | 0,45 km · 1,14 km · 13,60% (n = 25.321) | 0,45 km · 1,12 km · 13,30% (n = 28.221) | 0,45 km · 1,13 km · 13,40% (n = 30.375) |
+| 5. aproximada pela zona eleitoral | 3,37 km · 21,44 km · 80,30% (n = 73.817) | 3,20 km · 21,07 km · 79,60% (n = 84.457) | 3,29 km · 21,75 km · 80,10% (n = 92.574) |
+| 6. aproximada pelo município | 5,14 km · 22,77 km · 83,80% (n = 73.837) | 4,89 km · 22,28 km · 83,00% (n = 84.477) | 4,96 km · 22,84 km · 83,40% (n = 92.594) |
 
 ## 6. Municípios
 

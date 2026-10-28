@@ -137,7 +137,7 @@ def test_rodadas_gravam_o_primeiro_horario_de_cada_secao_e_cada_versao_nova(tse,
     s1, s2 = ("00001", "0001", "0001"), ("00001", "0001", "0002")
     tse.publicar(H.url_secoes("ac"), config_secoes("ac", {s1: "25/10/2026 17:01:10", s2: None}))
     tse.publicar(H.URL_BR, resultado("br", "17:02:00", 1, 2, 60, 40))
-    tse.publicar(H.url_resultado("ac"), resultado("ac", "17:02:00", 1, 2, 60, 40))
+    tse.publicar(H.url_resultado("ac"), resultado("ac", "15:02:00", 1, 2, 60, 40))  # hora do Acre: 17h02
     tse.publicar(H.url_resultado("ac00001"), resultado("00001", "17:02:00", 1, 2, 60, 40))
     raiz = tmp_path / "ramo-a"
     c = coletor(raiz)
@@ -192,7 +192,7 @@ def test_o_forecast_vai_no_dados_json_e_o_mapa_no_mapa_json(tse, tmp_path, monke
     s1, s2 = ("00001", "0001", "0001"), ("00001", "0001", "0002")
     tse.publicar(H.url_secoes("ac"), config_secoes("ac", {s1: "25/10/2026 17:01:10", s2: None}))
     tse.publicar(H.URL_BR, resultado("br", "17:02:00", 1, 2, 60, 40))
-    tse.publicar(H.url_resultado("ac"), resultado("ac", "17:02:00", 1, 2, 60, 40))
+    tse.publicar(H.url_resultado("ac"), resultado("ac", "15:02:00", 1, 2, 60, 40))  # hora do Acre
     tse.publicar(H.url_resultado("ac00001"), resultado("00001", "17:02:00", 1, 2, 60, 40))
     raiz = tmp_path / "ramo-a"
     c = coletor(raiz, previsor=previsor)
@@ -206,7 +206,7 @@ def test_o_forecast_vai_no_dados_json_e_o_mapa_no_mapa_json(tse, tmp_path, monke
     # tudo apurado: o forecast é o resultado
     tse.publicar(H.url_secoes("ac"), config_secoes("ac", {s1: "25/10/2026 17:01:10", s2: "25/10/2026 17:05:00"}))
     tse.publicar(H.URL_BR, resultado("br", "17:06:00", 2, 2, 110, 90))
-    tse.publicar(H.url_resultado("ac"), resultado("ac", "17:06:00", 2, 2, 110, 90))
+    tse.publicar(H.url_resultado("ac"), resultado("ac", "15:06:00", 2, 2, 110, 90))
     tse.publicar(H.url_resultado("ac00001"), resultado("00001", "17:06:00", 2, 2, 110, 90))
     H._lido.clear()
     c.rodada()
@@ -290,7 +290,7 @@ def test_juntar_fica_com_o_que_cada_coletor_viu_primeiro_e_o_noite_le(tmp_path, 
     gb.secoes([("ac", "00001", "0001", "0001", "25/10/2026 23:59:00", "2026-10-26T00:10:40"),
                ("ac", "00001", "0001", "0002", "25/10/2026 17:05:00", "2026-10-25T17:05:40")])
     for g in (ga, gb):
-        g.json("leituras_uf", lida("17:02:00", 10.0, 55, h(17, 2, 30)) | {"abr": "ac"})
+        g.json("leituras_uf", lida("15:02:00", 10.0, 55, h(17, 2, 30)) | {"abr": "ac"})  # a hora local do Acre
     monkeypatch.setattr(J, "_finais", lambda destino, log: None)  # sem rede
     destino = tmp_path / "bruto" / "ao_vivo" / "ele2026-6258"
     nada = lambda *_: None  # noqa: E731
@@ -314,7 +314,7 @@ def test_juntar_fica_com_o_que_cada_coletor_viu_primeiro_e_o_noite_le(tmp_path, 
     ap = noite.apuracao(2026, 2)  # as leituras gravadas, no formato da apuração exata, até os boletins de urna
     assert ap["tipo"] == "gravada" and ap["t"] == [2, 4, 6]
     assert ap["regioes"]["Brasil"]["petismo"] == [55, 53, 52] and ap["regioes"]["Norte"]["petismo"] == [55, 55, 55]
-    assert noite.gerar(2026, 2, {"2026": {"2": {"Brasil": {"petismo": 52, "validos": 100}}}}) is None  # sem forecast
+    assert noite.gerar(None, 2026, 2, {"2026": {"2": {"Brasil": {"petismo": 52, "validos": 100}}}}) is None  # sem forecast
 
 
 def test_juntar_guarda_o_forecast_da_noite_e_o_mapa_do_fim(tmp_path, monkeypatch):
@@ -323,12 +323,13 @@ def test_juntar_guarda_o_forecast_da_noite_e_o_mapa_do_fim(tmp_path, monkeypatch
                 "sup": petismo + 1, "chance": 0.9, "vinf": 0, "vantagem": 1, "vsup": 2, "votos_petismo": 60,
                 "votos_bolsonarismo": 40}
 
-    lida = C.leitura(resultado("br", "17:02:00", 1, 1, 55, 45, pst=10.0), h(17, 2, 20))
-    for ramo, previsoes, ultima in (
-            ("ramo-a", [previsao("2026-10-25T17:02:00", 1.0, 51.0)], "2026-10-25T17:02:00"),
+    lida = C.leitura(resultado("br", "17:02:00", 1, 2, 55, 45, pst=10.0), h(17, 2, 20))
+    seguinte = C.leitura(resultado("br", "17:04:00", 2, 2, 120, 80, pst=100.0), h(17, 4, 20))
+    for ramo, previsoes, ultima, leituras in (
+            ("ramo-a", [previsao("2026-10-25T17:02:00", 1.0, 51.0)], "2026-10-25T17:02:00", [lida]),
             ("ramo-b", [previsao("2026-10-25T17:02:00", 2.0, 52.0), previsao("2026-10-25T17:04:00", 3.0, 53.0)],
-             "2026-10-25T17:04:00")):
-        C.Gravador(tmp_path / ramo / "1.1-1").json("leituras_br", lida)
+             "2026-10-25T17:04:00", [lida, seguinte])):
+        C.Gravador(tmp_path / ramo / "1.1-1").json("leituras_br", *leituras)
         dados = {"coletor": ramo[-1], "tse": {"h": ultima}, "atualizado": ultima, "previsoes": previsoes}
         (tmp_path / ramo / "dados.json").write_text(json.dumps(dados), "utf-8")
         (tmp_path / ramo / "mapa.json").write_text(json.dumps({"coletor": ramo[-1]}), "utf-8")
@@ -351,6 +352,11 @@ def test_juntar_guarda_o_forecast_da_noite_e_o_mapa_do_fim(tmp_path, monkeypatch
     monkeypatch.setattr(config, "BRUTO", tmp_path / "bruto")
     monkeypatch.setattr(noite.forecast, "projecao_da_vespera", lambda ano: (0.4876, 1.42))
     monkeypatch.setattr(noite.votacao_secao, "fonte_secoes", lambda ano, turno: None)  # sem os votos de cada seção
-    n = noite.gerar(2026, 2, {"2026": {"2": {"Brasil": {"petismo": 52, "validos": 100}}}})
+    monkeypatch.setattr(noite, "prorrogacao", lambda con, ano, turno: None)  # sem os boletins de urna
+    n = noite.gerar(None, 2026, 2, {"2026": {"2": {"Brasil": {"petismo": 52, "validos": 100}}}})
     assert n["real"] == 52.0 and n["projecao"] == 48.76 and n["mapa"] == {"coletor": "b"}
     assert n["forecast"]["t"] == [2, 4] and n["forecast"]["apurado"] == [2.0, 3.0] and n["forecast"]["petismo"] == [52.0, 53.0]
+    assert n["forecast"]["contagem"] == [55.0, 60.0]  # a contagem do país na atualização de cada forecast
+    # às 17h02, a vantagem (10 votos) ainda cabia no eleitorado que faltava (215 − 115); às 17h04, não mais
+    assert n["definido"] == {"t": 4, "h": "2026-10-25T17:04:00", "apurado": 100.0}
+    assert n["encerrada"] == {"t": 4, "h": "2026-10-25T17:04:00"}

@@ -10,6 +10,7 @@
 """
 import concurrent.futures as cf
 import json
+import time
 import urllib.error
 
 from eleicoes import config
@@ -45,10 +46,19 @@ def _baixar_conferindo(url, destino, sha512_tse=None):
     return f"{tam / 1e6:.0f} MB, " + ("SHA-512 confere com o do TSE" if sha_tse else "tamanho confere")
 
 
+def _recursos(conjunto):
+    """Arquivos de um conjunto do portal de dados abertos. O portal serve respostas guardadas em cache por semanas (em
+    28/10/2026, o dos boletins de 2026 ainda vinha como em 06/10, sem o 2º turno, publicado em 27/10): um parâmetro
+    que muda a cada pedido traz a versão atual."""
+    return rede.ler_json(CKAN.format(conjunto) + f"&_={time.time_ns()}")["result"]["resources"]
+
+
 def boletins(ano, log=print):
     """Boletins de urna do 1º e do 2º turno (todas as UFs e o exterior)."""
-    recursos = rede.ler_json(CKAN.format(f"resultados-{ano}-boletim-de-urna"))["result"]["resources"]
-    urls = [r["url"] for r in recursos if r["url"].lower().endswith(".zip")]
+    recursos = _recursos(f"resultados-{ano}-boletim-de-urna")
+    # Cada zip tem o .sha512 ao lado; em 2026, o "Boletim de Urna" do 2º turno de RR aponta para o .sha512 (o zip é o
+    # mesmo endereço sem o sufixo)
+    urls = sorted({u for r in recursos if (u := r["url"].removesuffix(".sha512")).lower().endswith(".zip")})
     destino = pasta("boletins_urna", ano)
 
     def um(url):
@@ -72,7 +82,7 @@ def boletins(ano, log=print):
 def boletins_publicados(ano):
     """O TSE já publicou os boletins de urna do ano? (o conjunto só aparece no portal dias depois da eleição)"""
     try:
-        rede.ler_json(CKAN.format(f"resultados-{ano}-boletim-de-urna"))
+        _recursos(f"resultados-{ano}-boletim-de-urna")
         return True
     except urllib.error.HTTPError as e:
         if e.code == 404:

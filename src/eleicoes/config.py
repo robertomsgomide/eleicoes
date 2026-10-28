@@ -28,6 +28,11 @@ REGIOES = {
 }
 REGIAO_DA_UF = {uf: r for r, ufs in REGIOES.items() for uf in ufs}
 
+# Horas que o horário local de cada UF está atrás do de Brasília (o da capital; o oeste do Amazonas está uma hora além).
+# Desde 2022 o país inteiro vota das 8h às 17h de Brasília, mas os boletins de urna trazem a abertura, o encerramento e a
+# emissão no horário local da seção, e os arquivos de cada UF no site de resultados, a hora local da UF.
+FUSO_ATRAS = {"AC": 2, "AM": 1, "MS": 1, "MT": 1, "RO": 1, "RR": 1}
+
 
 @functools.cache
 def carregar():

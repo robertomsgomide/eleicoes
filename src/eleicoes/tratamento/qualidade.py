@@ -110,7 +110,7 @@ def gerar(log=print):
 
     linhas += ["", "## 3. Tipos de urna", "", "| Ano | Turno | Tipo | Seções | Boletins por seção |", "|---|---|---|--:|--:|"]
     for a, t in pares:
-        for tipo, qtd, n in q(f"SELECT tipo_urna, qt_boletins, count(*) FROM '{secao(a, t)}' GROUP BY ALL ORDER BY 3 DESC"):
+        for tipo, qtd, n in q(f"SELECT tipo_urna, qt_boletins, count(*) FROM '{secao(a, t)}' GROUP BY ALL ORDER BY 3 DESC, 1"):
             linhas.append(f"| {a} | {t}º | {tipo} | {_n(n)} | {qtd} |")
 
     linhas += _locais(q, [*pares, *pares_vs], log)

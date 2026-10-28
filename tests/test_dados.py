@@ -6,7 +6,7 @@ from eleicoes import config
 from eleicoes.tratamento import boletins, locais, oficial, votacao_secao
 from eleicoes.tratamento import municipios as tab_municipios
 
-PARES = [(a, t) for a in (2018, 2022) for t in (1, 2)] + [(2026, 1)]
+PARES = [(a, t) for a in (2018, 2022, 2026) for t in (1, 2)]
 NIVEIS = {"Brasil": (), "UF": ("sg_uf",), "zona": ("cd_municipio", "nr_zona")}
 
 
@@ -49,16 +49,18 @@ def test_hora_de_chegada_do_boletim_so_existe_a_partir_de_2022(ano, turno):
     assert com > 0.999 if ano >= 2022 else com == 0
 
 
-def test_boletins_e_votacao_por_secao_dao_os_mesmos_votos():
-    """2026, 1º turno: os dois arquivos do TSE com os votos de cada seção batem em todas as seções."""
-    _exige(boletins.saida("secoes", 2026, 1), votacao_secao.saida(2026, 1))
-    d = votacao_secao.diferencas_dos_boletins(duckdb.connect(), 2026, 1)
-    assert d["secoes"] == 499_206 and d["diferentes"] == []
+@pytest.mark.parametrize("turno,secoes", [(1, 499_206), (2, 499_205)])
+def test_boletins_e_votacao_por_secao_dao_os_mesmos_votos(turno, secoes):
+    """2026: os dois arquivos do TSE com os votos de cada seção batem em todas as seções, nos dois turnos."""
+    _exige(boletins.saida("secoes", 2026, turno), votacao_secao.saida(2026, turno))
+    d = votacao_secao.diferencas_dos_boletins(duckdb.connect(), 2026, turno)
+    assert d["secoes"] == secoes and d["diferentes"] == []
 
 
-def test_formato_de_2026_dos_boletins_e_lido_inteiro():
+@pytest.mark.parametrize("turno", [1, 2])
+def test_formato_de_2026_dos_boletins_e_lido_inteiro(turno):
     """Datas em aaaa-mm-dd e colunas renomeadas em 2026: nenhum horário nem biometria vazios por erro de leitura."""
-    (s,) = _exige(boletins.saida("secoes", 2026, 1))
+    (s,) = _exige(boletins.saida("secoes", 2026, turno))
     sem = duckdb.sql(f"""SELECT count(*) FILTER (dt_bu_recebido IS NULL), count(*) FILTER (dt_abertura IS NULL),
                                 count(*) FILTER (qt_eleitores_biometria_nh IS NULL) FROM '{s}'""").fetchone()
     assert sem[0] == 0 and sem[1] < 100 and sem[2] < 100

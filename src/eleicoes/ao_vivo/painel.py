@@ -23,6 +23,9 @@ from eleicoes.modelos import forecast as F
 VERSAO = 2
 MUNICIPIOS_DO_MAPA = config.RAIZ / "site" / "src" / "data" / "mapa" / "municipios.json"
 REGIAO_DA_UF = {uf.lower(): r for uf, r in config.REGIAO_DA_UF.items()}
+# O arquivo de cada UF no site de resultados traz a hora local da UF (o do país e o do exterior, a de Brasília): conferido
+# em 25/10/2026 com a hora em que os coletores viram cada leitura (no Acre, 2 h atrás; no AM, MS, MT, RO e RR, 1 h)
+FUSO_UF = {uf.lower(): horas for uf, horas in config.FUSO_ATRAS.items()}
 
 
 def _minuto(h, inicio):
@@ -48,7 +51,7 @@ def serie(leituras_br, leituras_uf, inicio, numeros):
     totais = {}
     for abr, ls in [("br", leituras_br), *leituras_uf.items()]:
         for l in sorted(ls, key=lambda l: l["h"]):
-            m = max(_minuto(l["h"], inicio), 0)
+            m = max(_minuto(l["h"], inicio) + 60 * FUSO_UF.get(abr, 0), 0)
             eventos.setdefault(m, {})[abr] = valores(l)
             totais[abr] = l["ts"]
     minutos = sorted(eventos)

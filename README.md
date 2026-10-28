@@ -8,7 +8,9 @@ no 2º turno de 2026, projeção e forecast da apuração.
 **O site: [robertomsgomide.github.io/eleicoes](https://robertomsgomide.github.io/eleicoes/)**. No 2º turno de 2026
 (25/10), Lula venceu Flávio Bolsonaro por 51,79% a 48,21% dos votos válidos. Até a véspera, o site se atualizou sozinho
 a cada pesquisa nova; na noite da apuração, acompanhou a contagem ao vivo, com o forecast; agora mostra o resultado
-final. O mapa e a curva da apuração do 2º turno ficam exatos quando o TSE publicar os boletins de urna (Etapa 7).
+final, com o mapa e a curva da apuração exatos pelos boletins de urna (publicados pelo TSE em 27/10), e o que aconteceu
+naquela noite: a votação prorrogada até as 19h nas seções ainda abertas, por decisão do STF, e o TSE sem receber
+boletins das 17h07 às 19h03.
 
 Fontes: TSE (resultados, boletins de urna, locais de votação, registro de pesquisas), IBGE
 (malhas e Censo 2022) e tabelas de pesquisas da Wikipedia (CC BY-SA). Roteiro em
@@ -62,9 +64,10 @@ sem depender de nenhum computador ligado:
 
 Na noite, a página de 2026 lia, a cada minuto, o placar direto do TSE (país e UFs) e o `dados.json` e o `mapa.json`
 do coletor mais recente (ramos `ao-vivo-*`). Desde 26/10, ela só lê os arquivos do site, que `uv run eleicoes site` gera
-da gravação juntada ([src/eleicoes/analises/noite.py](src/eleicoes/analises/noite.py)): `apuracao_2026_t2.json`, a
-apuração pelas leituras oficiais gravadas, até os boletins de urna; e `noite_2026_t2.json`, o forecast como apareceu na
-noite e, até o TSE publicar os votos de cada seção, o mapa do fim (o resultado de cada município, que a página reparte
+da gravação juntada ([src/eleicoes/analises/noite.py](src/eleicoes/analises/noite.py)): `noite_2026_t2.json`, o forecast
+como apareceu na noite, com a contagem do TSE que ele acompanhava e o momento em que o resultado ficou definido. Até os
+boletins de urna (de 26 a 28/10), a apuração era a das leituras oficiais gravadas (`apuracao_2026_t2.json`, hoje a
+exata, pela chegada de cada boletim), e o mapa, o do fim da noite (o resultado de cada município, que a página repartia
 entre os locais pelo 1º turno). O histórico do forecast e o mapa do fim só existiam no `dados.json` e no `mapa.json` de
 cada ramo: `uv run eleicoes juntar <ramos>` os acrescentou à gravação já juntada (`previsoes.json` e `mapa.json`). Com
 isso, os ramos `ao-vivo-*` (e os do ensaio) podem ser apagados. Como o forecast funciona, como foi testado e como se

@@ -198,9 +198,10 @@ function marcasPrevisao(pontos, {x, medida}) {
   ];
 }
 
-// Uma noite refeita (data/forecast.json, noites[ano]: colunas) no formato de previsao.serie (uma linha por momento).
+// Uma noite refeita (data/forecast.json, noites[ano]: colunas) no formato de previsao.serie (uma linha por momento). A
+// noite ao vivo (data/noite_*.json) traz também a contagem do TSE que cada forecast acompanhava.
 export function serieDaNoite(n) {
-  const campos = ["apurado", "petismo", "inf", "sup", "chance", "vantagem", "vinf", "vsup", "votos_petismo", "votos_bolsonarismo"];
+  const campos = ["apurado", "petismo", "inf", "sup", "chance", "vantagem", "vinf", "vsup", "votos_petismo", "votos_bolsonarismo", "contagem"].filter((k) => n[k]);
   return n.t.map((t, i) => ({minuto: t, ...Object.fromEntries(campos.map((k) => [k, n[k][i]]))}));
 }
 
@@ -217,6 +218,28 @@ function afastar(fins, campo = "valor", escala = 0) {
 // Rótulo no fim de cada linha (o deslocamento vertical do Plot é fixo por marca: uma marca por rótulo).
 function rotulosFinais(fins, x, texto, dx = 8) {
   return fins.map((d) => Plot.text([d], {x, y: "valor", dy: d.dy, dx, text: texto, textAnchor: "start", fill: TINTA, fontWeight: 600}));
+}
+
+// O maior trecho de uma curva exata sem nenhum boletim chegando, se passou de meia hora (no 2º turno de 2026, o TSE
+// suspendeu o recebimento durante a prorrogação da votação), ou null. ultimo e ate: os minutos do último boletim antes
+// dele e do primeiro depois; de: o minuto seguinte ao último, onde começa a faixa (marcaPausa); pct: o % das seções
+// apuradas durante o trecho.
+export function pausaDaApuracao(ap) {
+  if (ap.tipo !== "exata") return null;
+  let p = null;
+  for (let i = 1; i < ap.t.length && ap.t[i] <= ap.t999; i++) {
+    if (!p || ap.t[i] - ap.t[i - 1] > p.ate - p.ultimo) {
+      p = {ultimo: ap.t[i - 1], de: ap.t[i - 1] + 1, ate: ap.t[i], pct: (100 * ap.regioes.Brasil.secoes[i - 1]) / ap.totais.Brasil.secoes};
+    }
+  }
+  return p && p.ate - p.ultimo >= 30 ? p : null;
+}
+
+// Faixa de horário em que nenhum boletim chegou ao TSE (pausaDaApuracao); só no eixo de horário.
+function marcaPausa(ap, pausa) {
+  if (!pausa) return null;
+  const faixa = {de: relogio(ap.inicio, pausa.de), ate: relogio(ap.inicio, pausa.ate)};
+  return Plot.rect([faixa], {x1: "de", x2: "ate", fill: TINTA_SUAVE, fillOpacity: 0.14});
 }
 
 // Linha tracejada vertical, ponto e texto no momento em que muda o líder. O texto fica centrado na linha, mas dentro do
@@ -243,9 +266,10 @@ function marcaVirada(ap, linhas, x, valor, nomes, {quadro, noQuadro}) {
 // ---- Gráficos -------------------------------------------------------------------------
 
 // Os dois campos ao longo da apuração: % dos válidos, votos acumulados ou vantagem em votos. previsao: {serie} do
-// forecast (tracejado, com a faixa de 80%).
-export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, nomes, previsao = null}) {
+// forecast (tracejado, com a faixa de 80%); pausa: o trecho sem boletins chegando (marcaPausa).
+export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, nomes, previsao = null, pausa = null}) {
   const porHora = eixo === "hora";
+  const faixaPausa = porHora ? marcaPausa(ap, pausa) : null;
   let linhas = pontos(ap);
   if (porHora) linhas = linhas.filter((d) => d.minuto <= ap.t999);
   if (medida !== "votos") linhas = linhas.filter((d) => d.apurado >= 1); // o começo é muito ruidoso
@@ -280,6 +304,7 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
       x: escalaX(porHora, x0),
       y: {label: "Vantagem em votos", labelArrow: "none", grid: true, tickFormat: (v) => comSinal(v, miEixo)},
       marks: [
+        faixaPausa,
         Plot.areaY(linhas, {x, y: (d) => Math.max(0, vant(d)), fill: COR.petismo, fillOpacity: 0.2, curve}),
         Plot.areaY(linhas, {x, y: (d) => Math.min(0, vant(d)), fill: COR.bolsonarismo, fillOpacity: 0.2, curve}),
         Plot.ruleY([0], {stroke: TINTA_SUAVE}),
@@ -309,6 +334,7 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
     y: {label: m.rotulo, labelArrow: "none", grid: true, nice: true, tickFormat: m.eixo},
     color: {domain: CAMPOS, range: [COR.petismo, COR.bolsonarismo]},
     marks: [
+      faixaPausa,
       medida === "pct" ? Plot.ruleY([50], {stroke: TINTA_FRACA, strokeDasharray: "3,3"}) : null,
       ...previstas,
       Plot.line(longas, {x, y: "valor", z: "campo", stroke: "campo", strokeWidth: 2, curve, strokeDasharray: tracejado}),
@@ -320,9 +346,11 @@ export function graficoCampos(ap, {eixo = "hora", medida = "pct", width = 640, n
   });
 }
 
-// Regiões: ritmo da apuração (% das seções de cada região) ou votos válidos apurados em cada uma.
-export function graficoRegioes(ap, {eixo = "hora", modo = "ritmo", width = 640}) {
+// Regiões: ritmo da apuração (% das seções de cada região) ou votos válidos apurados em cada uma. pausa: como em
+// graficoCampos.
+export function graficoRegioes(ap, {eixo = "hora", modo = "ritmo", width = 640, pausa = null}) {
   const porHora = eixo === "hora";
+  const faixaPausa = porHora ? marcaPausa(ap, pausa) : null;
   const brasil = pontos(ap);
   const indices = brasil.map((_, i) => i).filter((i) => !porHora || brasil[i].minuto <= ap.t999);
   const regioes = modo === "ritmo" ? REGIOES.filter((r) => r !== "Exterior") : REGIOES;
@@ -363,6 +391,7 @@ export function graficoRegioes(ap, {eixo = "hora", modo = "ritmo", width = 640})
       ...comum,
       y: {domain: [y0, 100], label: "Seções apuradas na região", labelArrow: "none", grid: true, tickFormat: (v) => v + "%"},
       marks: [
+        faixaPausa,
         Plot.line(linhas, {x, y: "apurado", z: "regiao", stroke: "regiao", strokeWidth: 2, curve, strokeDasharray: estimada ? "6,3" : undefined}),
         porHora
           ? Plot.line(brasil.filter((d) => d.minuto <= ap.t999), {x: "hora", y: "apurado", stroke: TINTA, strokeWidth: 2.5, curve})
@@ -376,6 +405,7 @@ export function graficoRegioes(ap, {eixo = "hora", modo = "ritmo", width = 640})
     ...comum,
     y: {label: "Votos válidos apurados", labelArrow: "none", grid: true, tickFormat: miEixo},
     marks: [
+      faixaPausa,
       Plot.areaY(linhas, {x, y: "validos", fill: "regiao", order: REGIOES, curve, insetTop: 1}),
       regua,
       Plot.tip(largas, Plot.pointerX({x, y: (d) => ap.regioes.Brasil.validos[d.i] / 2, title: titulo}))
