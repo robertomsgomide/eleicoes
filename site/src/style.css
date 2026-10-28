@@ -169,6 +169,12 @@
   border-top: 2px dashed currentColor;
   background: color-mix(in srgb, currentColor 16%, transparent);
 }
+/* o trecho sem boletins chegando, na cor e na opacidade da faixa do gráfico (marcaPausa) */
+.legenda i.pausa {
+  height: 12px;
+  border: 0;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
 
 /* Rótulo "exato" / "estimado" */
 .selo {

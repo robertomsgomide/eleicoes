@@ -1,6 +1,6 @@
 # Validação da projeção do 2º turno
 
-> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 26/10/2026 11:59. Não editar à mão.
+> Gerado por `uv run eleicoes projecao` (ou `atualizar`) em 28/10/2026 15:15. Não editar à mão.
 
 Método em `src/eleicoes/modelos/projecao.py` e na Metodologia do site. Cada ano é refeito dia a dia, só com o que se sabia em cada dia (o 1º turno das urnas e as pesquisas concluídas até ali).
 
@@ -30,7 +30,7 @@ Quanto o modelo de distribuição erra só na geografia: o total do país é o d
 |---|--:|--:|--:|--:|--:|
 | 2018 | 1,58 | 2,13 | 2,62 | 67% | 86% |
 | 2022 | 0,46 | 0,66 | 0,93 | 83% | 75% |
-| 2026 | sai com os votos de cada seção do 2º turno, que o TSE publica depois da eleição | | | | |
+| 2026 | 0,99 | 1,03 | 1,21 | 33% | 50% |
 
 ## Sensibilidade aos desvios do total do país
 

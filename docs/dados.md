@@ -15,8 +15,8 @@ Origem, tamanho e SHA-512 de cada arquivo ficam em `dados/bruto/manifesto.csv` (
 
 | Fonte | Pasta | Origem | Conferência |
 |---|---|---|---|
-| Boletins de urna (bweb), 1º e 2º turno, um zip por UF + exterior | `tse/boletins_urna/<ano>/` | dadosabertos.tse.jus.br, conjunto `resultados-<ano>-boletim-de-urna` | SHA-512 publicado pelo TSE |
-| Votação por seção, só Presidente (antes dos boletins de urna; depois, conferência deles: 2026) | `tse/votacao_secao/<ano>/` | `cdn.tse.jus.br/.../votacao_secao/votacao_secao_<ano>_BR.zip` | tamanho |
+| Boletins de urna (bweb), 1º e 2º turno, um zip por UF + exterior | `tse/boletins_urna/<ano>/` | dadosabertos.tse.jus.br, conjunto `resultados-<ano>-boletim-de-urna` (a lista é pedida com um parâmetro que muda a cada vez: sem ele, o portal devolvia, em 28/10/2026, a versão de 06/10, sem o 2º turno) | SHA-512 publicado pelo TSE |
+| Votação por seção, só Presidente (antes dos boletins de urna; depois, conferência deles, baixada de novo quando o TSE a republica: 2026) | `tse/votacao_secao/<ano>/` | `cdn.tse.jus.br/.../votacao_secao/votacao_secao_<ano>_BR.zip` | tamanho |
 | Locais de votação, com coordenadas (também 2016, 2020 e 2024, só para completar coordenadas) | `tse/locais_votacao/<ano>/` | `cdn.tse.jus.br/.../eleitorado_local_votacao_<ano>.zip` | tamanho |
 | Totais oficiais de Presidente por município e zona | `tse/totais_oficiais/<ano>/` | só o arquivo `_BR.csv` de dentro de `votacao_candidato_munzona_<ano>.zip`, lido por partes sem baixar o zip | CRC do zip |
 | Códigos de município TSE → IBGE | `tse/municipios/` | `resultados.tse.jus.br/.../mun-e006257-cm.json` (o de 2026; os de anos anteriores saíram do ar, e os códigos do TSE não mudam) | JSON válido |
@@ -50,8 +50,8 @@ Os dois campos estudados vêm de `config/eleicoes.toml`: **petismo** = 13 (Hadda
 
 ### `tse/votacao_secao/<ano>_t<turno>.parquet` — uma linha por seção, da votação por seção
 
-A fonte dos votos por seção dos turnos ainda sem boletins de urna e, depois deles, uma conferência (no 1º turno de
-2026, as duas tabelas dão os mesmos votos em todas as seções). As mesmas colunas de votos de `secoes` (`votos_petismo`,
+A fonte dos votos por seção dos turnos ainda sem boletins de urna e, depois deles, uma conferência (nos dois turnos
+de 2026, as duas tabelas dão os mesmos votos em todas as seções). As mesmas colunas de votos de `secoes` (`votos_petismo`,
 `votos_bolsonarismo`, `votos_outros`, `votos_validos`, `votos_brancos`, `votos_nulos`), com `ano`, `turno`,
 `sg_uf`, `regiao`, `cd_municipio`, `cd_ibge`, `nm_municipio`, `nr_zona`, `nr_secao` e `nr_local_votacao`; sem
 horários, eleitorado e comparecimento. Votos de candidatos com candidatura indeferida (`nulos_tecnicos` em
@@ -136,12 +136,12 @@ Gerados por `uv run eleicoes site` a partir das tabelas acima e de `dados/bruto/
 
 | Arquivo | Conteúdo |
 |---|---|
-| `eleicoes.json` | campos, eleições (datas, horário de divulgação, candidatos) e regiões, de `config/eleicoes.toml` |
+| `eleicoes.json` | campos, eleições (datas, horário de divulgação, prorrogação da votação, candidatos) e regiões, de `config/eleicoes.toml` |
 | `resultados.json` | resultado final de cada turno no Brasil, por região e por UF. Votos dos candidatos: total oficial; eleitorado, comparecimento, brancos e nulos: boletins. Turnos ainda sem boletins ou total oficial: arquivos finais do site de resultados |
-| `apuracao_<ano>_t<turno>.json` | a apuração minuto a minuto: `t` (minutos desde o início da divulgação) e, para o Brasil e cada região, seções, válidos, petismo e bolsonarismo acumulados; `tipo` (exata/estimada/gravada), `viradas`, `t999` (minuto em que 99,9% das seções tinham chegado). Um turno sem boletins de urna (o 2º de 2026, nos dias depois da eleição) tem a curva `gravada`: as leituras oficiais gravadas na noite, o país pelo arquivo do país e cada região pela soma dos seus estados |
-| `noite_<ano>_t<turno>.json` | a noite de um turno com forecast (o 2º de 2026), de `dados/bruto/ao_vivo`: o forecast como apareceu na noite, em colunas como as noites refeitas de `forecast.json` (`t`, `h`, `apurado` = % das seções no arquivo do país, `petismo`, `inf`, `sup`, `chance`, vantagem e votos previstos), o resultado das urnas e a projeção da véspera (`real`, `projecao`) e, enquanto não há os votos de cada seção, o mapa do fim da noite (`mapa`: o resultado e o swing de cada município) |
+| `apuracao_<ano>_t<turno>.json` | a apuração minuto a minuto: `t` (minutos desde o início da divulgação) e, para o Brasil e cada região, seções, válidos, petismo e bolsonarismo acumulados; `tipo` (exata/estimada/gravada), `viradas`, `t999` (minuto em que 99,9% das seções tinham chegado). Um turno sem boletins de urna (o 2º de 2026, de 26 a 28/10) tem a curva `gravada`: as leituras oficiais gravadas na noite, o país pelo arquivo do país e cada região pela soma dos seus estados (os arquivos dos estados trazem a hora local, convertida para a de Brasília) |
+| `noite_<ano>_t<turno>.json` | a noite de um turno com forecast (o 2º de 2026), de `dados/bruto/ao_vivo`: o forecast como apareceu na noite, em colunas como as noites refeitas de `forecast.json` (`t`, `h`, `apurado` = % das seções no arquivo do país, `petismo`, `inf`, `sup`, `chance`, vantagem e votos previstos, `contagem` = % do petismo nos válidos no arquivo do país), o resultado das urnas e a projeção da véspera (`real`, `projecao`), a atualização em que o resultado ficou matematicamente definido e a última (`definido`, `encerrada`), a prorrogação da votação pelos boletins de urna (`prorrogacao`: as seções que emitiram o boletim depois do novo horário, os municípios com mais delas e o mesmo número no turno anterior) e, enquanto não há os votos de cada seção, o mapa do fim da noite (`mapa`: o resultado e o swing de cada município) |
 | `pesquisas_<ano>.json` | por turno: as pesquisas (em % do total e dos válidos), a tendência diária, a média da semana final, o resultado e a última pesquisa de cada instituto com o erro. No 2º turno, a tendência tem dois trechos, antes e depois do 1º turno (`segmento` 0 e 1; data do 1º turno em `primeiro_turno`). CC BY-SA 4.0 |
-| `projecao.json` | a projeção do 2º turno (`src/eleicoes/modelos/projecao.py`) de cada ano com 1º turno e pesquisas de 2º turno: o 1º turno, o ponto de partida (com cada pesquisa pareada), a projeção de cada dia entre os turnos (parte do petismo nos válidos, desvio, faixa de 80%, chance, peso das pesquisas), regiões e UFs no último dia, as urnas, a validação (em 2026, sem a distribuição com o total verdadeiro até os votos de cada seção) e os parâmetros. Em 2018 e 2022, é a projeção refeita só com o que se sabia em cada dia |
+| `projecao.json` | a projeção do 2º turno (`src/eleicoes/modelos/projecao.py`) de cada ano com 1º turno e pesquisas de 2º turno: o 1º turno, o ponto de partida (com cada pesquisa pareada), a projeção de cada dia entre os turnos (parte do petismo nos válidos, desvio, faixa de 80%, chance, peso das pesquisas), regiões e UFs no último dia, as urnas, a validação (com a distribuição dado o total verdadeiro, pelos votos de cada seção do 2º turno) e os parâmetros. Em 2018 e 2022, é a projeção refeita só com o que se sabia em cada dia |
 | `validacao_estimativa.json` | o teste do método de estimativa de 2018 aplicado a 2022 (com os atrasos do outro turno) e a 2026 (com os do 1º turno de 2022) |
 | `mapa/malha.json` | municípios do IBGE em TopoJSON simplificado (fronteiras compartilhadas; `id` = código IBGE) |
 | `mapa/municipios.json` | nome, UF, eleitorado e posição do rótulo (centro dos locais de votação) de cada município |
@@ -154,7 +154,10 @@ Gerados por `uv run eleicoes site` a partir das tabelas acima e de `dados/bruto/
 - **Fusos.** A chegada do boletim está no horário de Brasília; abertura, encerramento e emissão, no horário local
   da seção. Evidência (2º turno de 2022): o menor intervalo entre emissão e chegada é de ~0–7 min nas UFs no
   horário de Brasília, ~60 min nas que estão 1h atrás (MT, MS, RO, RR, AM) e ~126 min no Acre (2h atrás). No exterior,
-  os horários locais variam por país. A conversão para um único fuso fica para a Etapa 2.
+  os horários locais variam por país. Quando é preciso o horário de Brasília (as seções abertas até o fim da
+  prorrogação de 2026), a emissão é convertida pelo fuso da UF (`FUSO_ATRAS` em `src/eleicoes/config.py`; o oeste do
+  Amazonas está uma hora além, o que não muda as contas depois das 18h). No site de resultados, lido ao vivo, o
+  arquivo de cada UF também traz a hora local da UF.
 - **Horário de votação.** Em 2022 o país todo votou das 8h às 17h de Brasília; em 2018, das 8h às 17h no horário local.
 - **2018 não tem a chegada dos boletins.** A linha do tempo da apuração de 2018 será aproximada e rotulada (Etapa 2).
 - **Seções agregadas** votam na urna da seção principal; os votos estão no boletim da principal.
@@ -181,7 +184,10 @@ Gerados por `uv run eleicoes site` a partir das tabelas acima e de `dados/bruto/
   por seção em todas as seções. Os votos de Leonardo Alves de Araújo (28), com candidatura indeferida, são nulos
   (nulos técnicos): nominais nos boletins e na votação por seção, ausentes do total oficial. O eleitorado do
   exterior nos boletins (916.039) é 495 menor que no resultado final do site de resultados (916.534); votos,
-  comparecimento, brancos e nulos são iguais.
+  comparecimento, brancos e nulos são iguais. Os boletins do 2º turno (publicados em 27/10) também batem com o total
+  oficial em todas as zonas e com a votação por seção em todas as 499.205 seções; o eleitorado do exterior neles
+  (916.158) é 525 menor que no resultado final (916.683). No portal de dados abertos, o recurso "Boletim de Urna" do
+  2º turno de RR aponta para o `.sha512`: o zip é o mesmo endereço sem o sufixo.
 - **Formato dos boletins de 2026.** Datas em `aaaa-mm-dd hh:mm:ss` (antes, `dd/mm/aaaa`) e duas colunas com outro
   nome: `DS_SECOES_AGREGADAS` (antes `DS_AGREGADAS`) e `QT_ELEI_BIOM_SEM_HABILITACAO` (antes
   `QT_ELEITORES_BIOMETRIA_NH`). O processamento lê os dois formatos.
